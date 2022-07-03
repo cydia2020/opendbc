@@ -48,7 +48,9 @@ cdef class CANParser:
     self.can_valid = False
     self.can_invalid_cnt = CAN_INVALID_CNT
 
-    for i in range(self.dbc[0].msgs.size()):
+    cdef int i
+    cdef int num_msgs = self.dbc[0].num_msgs
+    for i in range(num_msgs):
       msg = self.dbc[0].msgs[i]
       name = msg.name.decode('utf8')
 
@@ -154,9 +156,12 @@ cdef class CANDefine():
     if not self.dbc:
       raise RuntimeError(f"Can't find DBC: '{dbc_name}'")
 
+    num_vals = self.dbc[0].num_vals
+
     address_to_msg_name = {}
 
-    for i in range(self.dbc[0].msgs.size()):
+    num_msgs = self.dbc[0].num_msgs
+    for i in range(num_msgs):
       msg = self.dbc[0].msgs[i]
       name = msg.name.decode('utf8')
       address = msg.address
@@ -164,7 +169,7 @@ cdef class CANDefine():
 
     dv = defaultdict(dict)
 
-    for i in range(self.dbc[0].vals.size()):
+    for i in range(num_vals):
       val = self.dbc[0].vals[i]
 
       sgname = val.name.decode('utf8')

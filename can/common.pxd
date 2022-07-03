@@ -21,37 +21,37 @@ cdef extern from "common_dbc.h":
     VOLKSWAGEN_COUNTER,
     SUBARU_CHECKSUM,
     CHRYSLER_CHECKSUM
-    HKG_CAN_FD_CHECKSUM,
-    HKG_CAN_FD_COUNTER,
 
   cdef struct Signal:
-    string name
+    const char* name
     int start_bit, msb, lsb, size
     bool is_signed
     double factor, offset
-    bool is_little_endian
     SignalType type
 
   cdef struct Msg:
-    string name
+    const char* name
     uint32_t address
     unsigned int size
-    vector[Signal] sigs
+    size_t num_sigs
+    const Signal *sigs
 
   cdef struct Val:
-    string name
+    const char* name
     uint32_t address
-    string def_val
-    vector[Signal] sigs
+    const char* def_val
+    const Signal *sigs
 
   cdef struct DBC:
-    string name
-    vector[Msg] msgs
-    vector[Val] vals
+    const char* name
+    size_t num_msgs
+    const Msg *msgs
+    const Val *vals
+    size_t num_vals
 
   cdef struct SignalParseOptions:
     uint32_t address
-    string name
+    const char* name
 
 
   cdef struct MessageParseOptions:
@@ -60,7 +60,7 @@ cdef extern from "common_dbc.h":
 
   cdef struct SignalValue:
     uint32_t address
-    string name
+    const char* name
     double value
     vector[double] all_values
 

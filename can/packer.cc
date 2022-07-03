@@ -31,10 +31,12 @@ CANPacker::CANPacker(const std::string& dbc_name) {
   dbc = dbc_lookup(dbc_name);
   assert(dbc);
 
-  for (const auto& msg : dbc->msgs) {
-    message_lookup[msg.address] = msg;
-    for (const auto& sig : msg.sigs) {
-      signal_lookup[std::make_pair(msg.address, std::string(sig.name))] = sig;
+  for (int i = 0; i < dbc->num_msgs; i++) {
+    const Msg* msg = &dbc->msgs[i];
+    message_lookup[msg->address] = *msg;
+    for (int j = 0; j < msg->num_sigs; j++) {
+      const Signal* sig = &msg->sigs[j];
+      signal_lookup[std::make_pair(msg->address, std::string(sig->name))] = *sig;
     }
   }
   init_crc_lookup_tables();
@@ -98,9 +100,6 @@ std::vector<uint8_t> CANPacker::pack(uint32_t address, const std::vector<SignalP
       set_value(ret, sig, chksm);
     } else if (sig.type == SignalType::PEDAL_CHECKSUM) {
       unsigned int chksm = pedal_checksum(ret);
-      set_value(ret, sig, chksm);
-    } else if (sig.type == SignalType::HKG_CAN_FD_CHECKSUM) {
-      unsigned int chksm = hkg_can_fd_checksum(address, ret);
       set_value(ret, sig, chksm);
     } else {
       //WARN("CHECKSUM signal type not valid\n");
