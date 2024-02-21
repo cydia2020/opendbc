@@ -251,6 +251,12 @@ BO_ 835 ACC_CONTROL: 8 DSU
 BO_ 836 PRE_COLLISION_2: 8 DSU
  SG_ CHECKSUM : 63|8@0+ (1,0) [0|0] "" XXX
 
+BO_ 865 PCM_BUTTONS : 8 PCM
+ SG_ RES_BTN : 5|1@0+ (1,0) [0|0] "" XXX
+ SG_ SET_BTN : 4|1@0+ (1,0) [0|0] "" XXX
+ SG_ CANCEL_BTN : 3|1@0+ (1,0) [0|0] "" XXX
+ SG_ MAIN_ON : 2|1@0+ (1,0) [0|0] "" XXX
+
 BO_ 869 DSU_CRUISE : 7 DSU
  SG_ RES_BTN : 3|1@0+ (1,0) [0|0] "" XXX
  SG_ SET_BTN : 2|1@0+ (1,0) [0|0] "" XXX
