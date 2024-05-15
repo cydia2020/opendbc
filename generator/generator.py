@@ -45,8 +45,8 @@ def create_all(output_path: str):
     os.remove(f)
 
   # run python generator scripts first
-  for f in glob.glob(f"{generator_path}/*/*.py"):
-    subprocess.check_call(f)
+#  for f in glob.glob(f"{generator_path}/*/*.py"):
+#    subprocess.check_call(f)
 
   for src_dir, _, filenames in os.walk(generator_path):
     if src_dir == generator_path:
