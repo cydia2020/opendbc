@@ -43,7 +43,11 @@ class CarControllerParams:
 class ToyotaFlags(IntFlag):
   # Detected flags
   HYBRID = 1
+  SMART_DSU = 2
   DISABLE_RADAR = 4
+  SECONDARY_STEER_ANGLE = 4096
+  DSU_BYPASS = 2048
+  TOYOTA_INTERCEPTOR_SNG = 1024
 
   # Static flags
   TSS2 = 8

@@ -1,16 +1,21 @@
 import copy
-from opendbc.car import apply_meas_steer_torque_limits, apply_std_steer_angle_limits, common_fault_avoidance, make_tester_present_msg, structs
+from opendbc.car import apply_meas_steer_torque_limits, apply_std_steer_angle_limits, common_fault_avoidance, create_gas_interceptor_command,\
+                                        make_tester_present_msg, DT_CTRL, structs
 from opendbc.car.can_definitions import CanData
-from opendbc.car.common.numpy_fast import clip
+from opendbc.car.common.numpy_fast import clip, interp
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.toyota import toyotacan
 from opendbc.car.toyota.values import CAR, STATIC_DSU_MSGS, NO_STOP_TIMER_CAR, TSS2_CAR, \
-                                        CarControllerParams, ToyotaFlags, \
+                                        CarControllerParams, ToyotaFlags, MIN_ACC_SPEED, \
                                         UNSUPPORTED_DSU_CAR
 from opendbc.can.packer import CANPacker
 
 SteerControlType = structs.CarParams.SteerControlType
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
+AudibleAlert = structs.CarControl.HUDControl.AudibleAlert
+
+#PEDAL_TRANSITION
+PEDAL_TRANSITION = 4.5
 
 # LKA limits
 # EPS faults if you apply torque while the steering rate is above 100 deg/s for too long
@@ -25,6 +30,13 @@ MAX_USER_TORQUE = 500
 MAX_LTA_ANGLE = 94.9461  # deg
 MAX_LTA_DRIVER_TORQUE_ALLOWANCE = 150  # slightly above steering pressed allows some resistance when changing lanes
 
+# PCM compensatory force calculation threshold interpolation values
+COMPENSATORY_CALCULATION_THRESHOLD_V = [-0.2, -0.2, -0.05]  # m/s^2
+COMPENSATORY_CALCULATION_THRESHOLD_BP = [0., 20., 32.]  # m/s
+
+# resume, lead, and lane lines hysteresis
+RESUME_HYSTERESIS_TIME = 1.5  # seconds
+UI_HYSTERESIS_TIME = 1.  # seconds
 
 class CarController(CarControllerBase):
   def __init__(self, dbc_name, CP):
@@ -33,9 +45,13 @@ class CarController(CarControllerBase):
     self.last_steer = 0
     self.last_angle = 0
     self.alert_active = False
-    self.last_standstill = False
+    self.resume_off_frames = 0.
     self.standstill_req = False
+    self.lead = False
+    self.left_lane = False
+    self.right_lane = False
     self.steer_rate_counter = 0
+    self.prohibit_neg_calculation = True
     self.distance_button = 0
 
     self.packer = CANPacker(dbc_name)
@@ -100,20 +116,78 @@ class CarController(CarControllerBase):
                                                           lta_active, self.frame // 2, torque_wind_down))
 
     # *** gas and brake ***
-    pcm_accel_cmd = clip(actuators.accel, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+    if self.CP.enableGasInterceptor and CC.longActive and not self.CP.flags & ToyotaFlags.TOYOTA_INTERCEPTOR_SNG:
+      MAX_INTERCEPTOR_GAS = 0.5
+      # RAV4 has very sensitive gas pedal
+      if self.CP.carFingerprint == CAR.TOYOTA_RAV4:
+        PEDAL_SCALE = interp(CS.out.vEgo, [0.0, MIN_ACC_SPEED, MIN_ACC_SPEED + PEDAL_TRANSITION], [0.15, 0.3, 0.0])
+      elif self.CP.carFingerprint == CAR.TOYOTA_COROLLA:
+        PEDAL_SCALE = interp(CS.out.vEgo, [0.0, MIN_ACC_SPEED, MIN_ACC_SPEED + PEDAL_TRANSITION], [0.3, 0.4, 0.0])
+      else:
+        PEDAL_SCALE = interp(CS.out.vEgo, [0.0, MIN_ACC_SPEED, MIN_ACC_SPEED + PEDAL_TRANSITION], [0.4, 0.5, 0.0])
+      # offset for creep and windbrake
+      pedal_offset = interp(CS.out.vEgo, [0.0, 2.3, MIN_ACC_SPEED + PEDAL_TRANSITION], [-.4, 0.0, 0.2])
+      pedal_command = PEDAL_SCALE * (actuators.accel + pedal_offset)
+      interceptor_gas_cmd = clip(pedal_command, 0., MAX_INTERCEPTOR_GAS)
+    # Full-speed Dynamic RADAR Cruise Control automatic resume logic using a comma pedal
+    # Activated when these conditions are met:
+    # 1. openpilot is controlling longitudinal, and is requesting more than 0.0 m/s^2 acceleration **WHEN**
+    # 2. the vehicle that openpilot is operating on a car with self.CP.flags & ToyotaFlags.TOYOTA_INTERCEPTOR_SNG flag,
+    # 3. a comma pedal is detected on the CAN network **AND**
+    # 4. the reported speed on the CAN network is larger than 0.001 m/s (Toyota starts reporting at 0.3 m/s)
+    elif (CC.longActive and actuators.accel > 0.) and self.CP.flags & ToyotaFlags.TOYOTA_INTERCEPTOR_SNG \
+         and self.CP.enableGasInterceptor and CS.out.vEgo < 1e-3:
+      interceptor_gas_cmd = 0.12
+    else:
+      interceptor_gas_cmd = 0.
 
-    # on entering standstill, send standstill request
-    if CS.out.standstill and not self.last_standstill and (self.CP.carFingerprint not in NO_STOP_TIMER_CAR):
-      self.standstill_req = True
-    if CS.pcm_acc_status != 8:
-      # pcm entered standstill or it's disabled
-      self.standstill_req = False
+    # a variation in accel command is more pronounced at higher speeds, let compensatory forces ramp to zero before
+    # applying when speed is high
+    comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
+    # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
+    if not CC.longActive:
+      self.prohibit_neg_calculation = True
+    # don't reset until a reasonable compensatory value is reached
+    if CS.pcm_neutral_force > comp_thresh * self.CP.mass:
+      self.prohibit_neg_calculation = False
+    # limit minimum to only positive until first positive is reached after engagement, don't calculate when long isn't active
+    if CC.longActive and not self.prohibit_neg_calculation:
+      accel_offset = CS.pcm_neutral_force / self.CP.mass
+    else:
+      accel_offset = 0.
+    # only calculate pcm_accel_cmd when long is active to prevent disengagement from accelerator depression
+    if CC.longActive:
+      pcm_accel_cmd = clip(actuators.accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+    else:
+      pcm_accel_cmd = 0.
 
-    self.last_standstill = CS.out.standstill
+    # *** standstill logic ***
+    # mimic stock behaviour, set standstill_req to False only when openpilot wants to resume
+    if not CC.cruiseControl.resume:
+        self.resume_off_frames += 1  # frame counter for hysteresis
+        # add a 1.5 second hysteresis to when CC.cruiseControl.resume turns off in order to prevent
+        # vehicle's dash from blinking
+        if self.resume_off_frames >= RESUME_HYSTERESIS_TIME / DT_CTRL:
+            self.standstill_req = True
+    else:
+        self.resume_off_frames = 0
+        self.standstill_req = False
+    # ignore standstill on NO_STOP_TIMER_CAR, and never ignore if self.CP.enableGasInterceptor
+    self.standstill_req = self.standstill_req and (self.CP.carFingerprint not in NO_STOP_TIMER_CAR or self.CP.enableGasInterceptor)
 
     # handle UI messages
     fcw_alert = hud_control.visualAlert == VisualAlert.fcw
-    steer_alert = hud_control.visualAlert in (VisualAlert.steerRequired, VisualAlert.ldw)
+    steer_alert = hud_control.visualAlert in (VisualAlert.steerRequired, VisualAlert.ldw) and not hud_control.enableVehicleBuzzer
+    alert_prompt = hud_control.audibleAlert in (AudibleAlert.promptDistracted, AudibleAlert.prompt) and hud_control.enableVehicleBuzzer
+    alert_prompt_repeat = hud_control.audibleAlert in (AudibleAlert.promptRepeat, AudibleAlert.warningSoft) and hud_control.enableVehicleBuzzer
+    alert_immediate = hud_control.audibleAlert == AudibleAlert.warningImmediate and hud_control.enableVehicleBuzzer
+    cancel_chime = pcm_cancel_cmd and not hud_control.enableVehicleBuzzer
+
+    # *** ui hysteresis ***
+    if self.frame % (UI_HYSTERESIS_TIME / DT_CTRL) == 0:
+      self.lead = hud_control.leadVisible
+      self.left_lane = hud_control.leftLaneVisible
+      self.right_lane = hud_control.rightLaneVisible
 
     # we can spam can to cancel the system even if we are using lat only control
     if (self.frame % 3 == 0 and self.CP.openpilotLongitudinalControl) or pcm_cancel_cmd:
@@ -122,7 +196,7 @@ class CarController(CarControllerBase):
       # Press distance button until we are at the correct bar length. Only change while enabled to avoid skipping startup popup
       if self.frame % 6 == 0 and self.CP.openpilotLongitudinalControl:
         desired_distance = 4 - hud_control.leadDistanceBars
-        if CS.out.cruiseState.enabled and CS.pcm_follow_distance != desired_distance:
+        if CS.pcm_follow_distance != desired_distance:
           self.distance_button = not self.distance_button
         else:
           self.distance_button = 0
@@ -131,33 +205,29 @@ class CarController(CarControllerBase):
       if pcm_cancel_cmd and self.CP.carFingerprint in UNSUPPORTED_DSU_CAR:
         can_sends.append(toyotacan.create_acc_cancel_command(self.packer))
       elif self.CP.openpilotLongitudinalControl:
-        can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, pcm_cancel_cmd, self.standstill_req, lead, CS.acc_type, fcw_alert,
-                                                        self.distance_button))
+        can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, actuators.accel, CS.out.aEgo, CC.longActive, pcm_cancel_cmd,
+                                                        self.standstill_req, lead, CS.acc_type, fcw_alert, self.distance_button))
         self.accel = pcm_accel_cmd
       else:
-        can_sends.append(toyotacan.create_accel_command(self.packer, 0, pcm_cancel_cmd, False, lead, CS.acc_type, False, self.distance_button))
+        can_sends.append(toyotacan.create_accel_command(self.packer, 0, 0, 0, False, pcm_cancel_cmd, False, lead, CS.acc_type, False, self.distance_button))
+
+    if self.frame % 2 == 0 and self.CP.enableGasInterceptor and self.CP.openpilotLongitudinalControl:
+      # send exactly zero if gas cmd is zero. Interceptor will send the max between read value and gas cmd.
+      # This prevents unexpected pedal range rescaling
+      can_sends.append(create_gas_interceptor_command(self.packer, interceptor_gas_cmd, self.frame // 2))
+      self.gas = interceptor_gas_cmd
 
     # *** hud ui ***
-    if self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:
-      # ui mesg is at 1Hz but we send asap if:
-      # - there is something to display
-      # - there is something to stop displaying
-      send_ui = False
-      if ((fcw_alert or steer_alert) and not self.alert_active) or \
-         (not (fcw_alert or steer_alert) and self.alert_active):
-        send_ui = True
-        self.alert_active = not self.alert_active
-      elif pcm_cancel_cmd:
-        # forcing the pcm to disengage causes a bad fault sound so play a good sound instead
-        send_ui = True
+    # usually this is sent at a much lower rate, but no adverse effects has been observed when sent at a much higher rate
+    # doing so simplifies carcontroller logic and allows faster response from the vehicle's combination meter
+    if self.frame % 3 == 0 and self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:
+      can_sends.append(toyotacan.create_ui_command(self.packer, steer_alert, cancel_chime, self.left_lane,
+                                                   self.right_lane, CC.enabled, CS.lkas_hud, CS.lda_left_lane,
+                                                   CS.lda_right_lane, CS.sws_beeps, CS.lda_sa_toggle, alert_prompt,
+                                                   alert_prompt_repeat, alert_immediate))
 
-      if self.frame % 20 == 0 or send_ui:
-        can_sends.append(toyotacan.create_ui_command(self.packer, steer_alert, pcm_cancel_cmd, hud_control.leftLaneVisible,
-                                                     hud_control.rightLaneVisible, hud_control.leftLaneDepart,
-                                                     hud_control.rightLaneDepart, CC.enabled, CS.lkas_hud))
-
-      if (self.frame % 100 == 0 or send_ui) and (self.CP.enableDsu or self.CP.flags & ToyotaFlags.DISABLE_RADAR.value):
-        can_sends.append(toyotacan.create_fcw_command(self.packer, fcw_alert))
+    if self.CP.enableDsu or self.CP.flags & ToyotaFlags.DISABLE_RADAR.value:
+      can_sends.append(toyotacan.create_fcw_command(self.packer, fcw_alert))
 
     # *** static msgs ***
     for addr, cars, bus, fr_step, vl in STATIC_DSU_MSGS:

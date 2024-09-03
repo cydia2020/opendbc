@@ -59,6 +59,9 @@ class CarState:
 
   engineRpm: float = auto_field()
 
+  brakeLights: bool = auto_field()
+  meterBrightness: float = auto_field()
+
   # brake pedal, 0.0-1.0
   brake: float = auto_field()  # this is user pedal only
   brakePressed: bool = auto_field()  # this is user pedal only
@@ -244,6 +247,7 @@ class CarControl:
     setSpeed: float = auto_field()
     lanesVisible: bool = auto_field()
     leadVisible: bool = auto_field()
+    enableVehicleBuzzer: bool = auto_field()
     visualAlert: 'CarControl.HUDControl.VisualAlert' = field(default_factory=lambda: CarControl.HUDControl.VisualAlert.none)
     audibleAlert: 'CarControl.HUDControl.AudibleAlert' = field(default_factory=lambda: CarControl.HUDControl.AudibleAlert.none)
     rightLaneVisible: bool = auto_field()
