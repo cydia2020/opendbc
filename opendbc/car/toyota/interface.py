@@ -45,8 +45,9 @@ class CarInterface(CarInterfaceBase):
     if 0x2FF in fingerprint[0] or (0x2AA in fingerprint[0] and candidate in NO_DSU_CAR):
       ret.flags |= ToyotaFlags.SMART_DSU.value
 
-    # Detect 0x343 and 0x4CB on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
-    if 0x141 in fingerprint[1] and 0x160 in fingerprint[1] and candidate not in TSS2_CAR:
+    # Detect 0x344 and 0x4CB on bus 128, if detected on bus 128 and is not TSS 2, openpilot is forwarding message
+    # and dsu is bypassed
+    if 0x344 in fingerprint[128] and 0x4cb in fingerprint[128] and candidate not in TSS2_CAR:
       ret.flags |= ToyotaFlags.DSU_BYPASS.value
 
     # Detect 0x23, the CAN ID used by ZSS
