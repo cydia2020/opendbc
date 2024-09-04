@@ -49,13 +49,14 @@ class CarInterface(CarInterfaceBase):
     if 0x23 in fingerprint[0]:
       ret.flags |= ToyotaFlags.SECONDARY_STEER_ANGLE.value
 
-    # In TSS2 cars, the camera does long control
-    found_ecus = [fw.ecu for fw in car_fw]
-    ret.enableDsu = len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR)
-
     # Detect 0x343 on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
     if 0x343 in fingerprint[2] and candidate not in TSS2_CAR and not ret.flags & ToyotaFlags.SMART_DSU:
       ret.flags |= ToyotaFlags.DSU_BYPASS.value
+
+    # In TSS2 cars, the camera does long control
+    found_ecus = [fw.ecu for fw in car_fw]
+    ret.enableDsu = len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR) \
+                    and not bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)
 
     if candidate == CAR.TOYOTA_PRIUS:
       stop_and_go = True
