@@ -47,7 +47,9 @@ class CarInterface(CarInterfaceBase):
 
     # Detect 0x344 and 0x4CB on bus 128, if detected on bus 128 and is not TSS 2, openpilot is forwarding message
     # and dsu is bypassed
-    if 0x344 in fingerprint[128] and 0x4cb in fingerprint[128] and candidate not in TSS2_CAR:
+    if 0x344 in fingerprint[2] and 0x344 not in fingerprint[0] and \
+       0x4cb in fingerprint[2] and 0x4cb not in fingerprint[0] and \
+       bool(ret.flags & ToyotaFlags.SMART_DSU.value) and not candidate not in TSS2_CAR:
       ret.flags |= ToyotaFlags.DSU_BYPASS.value
 
     # Detect 0x23, the CAN ID used by ZSS
@@ -56,7 +58,8 @@ class CarInterface(CarInterfaceBase):
 
     # In TSS2 cars, the camera does long control
     found_ecus = [fw.ecu for fw in car_fw]
-    ret.enableDsu = len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR)
+    ret.enableDsu = not bool(ret.flags & ToyotaFlags.DSU_BYPASS.value) and bool(ret.flags & ToyotaFlags.SMART_DSU.value) \
+                    and len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR)
 
     if candidate == CAR.TOYOTA_PRIUS:
       stop_and_go = True
