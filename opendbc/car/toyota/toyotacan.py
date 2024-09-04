@@ -85,26 +85,6 @@ def create_ui_command(packer, steer, chime, left_line, right_line, enabled, stoc
     "BARRIERS": 1 if enabled else 0,
     "LDA_SA_TOGGLE": lda_sa_toggle,
     "REPEATED_BEEPS": 1 if alert_prompt_repeat or lda_right_lane or lda_left_lane else 0,
-
-    # static signals
-    "SET_ME_X02": 2,
-    "SET_ME_X01": 1,
-    "LKAS_STATUS": 1,
-    "LANE_SWAY_FLD": 7,
-    "LANE_SWAY_BUZZER": 0,
-    "LANE_SWAY_WARNING": 0,
-    "LDA_FRONT_CAMERA_BLOCKED": 0,
-    "TAKE_CONTROL": 0,
-    "LANE_SWAY_SENSITIVITY": 2,
-    "LANE_SWAY_TOGGLE": 1,
-    "LDA_ON_MESSAGE": 0,
-    "LDA_MESSAGES": 0,
-    "LDA_SENSITIVITY": 2,
-    "LDA_UNAVAILABLE": 0,
-    "LDA_MALFUNCTION": 0,
-    "LDA_UNAVAILABLE_QUIET": 0,
-    "ADJUSTING_CAMERA": 0,
-    "LDW_EXIST": 1,
   }
 
   # lane sway functionality

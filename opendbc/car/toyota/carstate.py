@@ -149,10 +149,7 @@ class CarState(CarStateBase):
     cp_acc = cp_cam if (self.CP.carFingerprint in (TSS2_CAR - RADAR_ACC_CAR) or bool(self.CP.flags & ToyotaFlags.DSU_BYPASS.value)) else cp
 
     # if TSS 2.0 or bypassing DSU, longitudinal messages (ACC, PCS) will be available for panda to read before it's filtered
-    if self.CP.flags & ToyotaFlags.DSU_BYPASS.value or (self.CP.carFingerprint in TSS2_CAR and not self.CP.flags & ToyotaFlags.DISABLE_RADAR.value) \
-      and not self.CP.flags & ToyotaFlags.SMART_DSU.value:
-    # do not pass through ACC_TYPE on TSS-P cars regardless of 0x343 interceptor
-      if not self.CP.flags & ToyotaFlags.DSU_BYPASS.value: # do not passthrough acc type signal if tss-p
+    if (self.CP.carFingerprint in TSS2_CAR and not self.CP.flags & ToyotaFlags.DISABLE_RADAR.value) and not self.CP.flags & ToyotaFlags.SMART_DSU.value:
         self.acc_type = cp_acc.vl["ACC_CONTROL"]["ACC_TYPE"]
 
     # some TSS2 cars have low speed lockout permanently set, so ignore on those cars
