@@ -51,12 +51,11 @@ class CarInterface(CarInterfaceBase):
 
     # In TSS2 cars, the camera does long control
     found_ecus = [fw.ecu for fw in car_fw]
-    ret.enableDsu = not bool(ret.flags & ToyotaFlags.SMART_DSU.value) and len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR)
+    ret.enableDsu = not bool(ret.flags & ToyotaFlags.SMART_DSU.value) and len(found_ecus) > 0 and \
+                    Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR)
 
-    # Detect 0x344 and 0x4CB on bus 128, if detected on bus 128 and is not TSS 2, openpilot is forwarding message
-    # and dsu is bypassed
-    if 0x344 in fingerprint[2] and 0x4cb in fingerprint[2] and \
-       bool(ret.flags & ToyotaFlags.SMART_DSU.value) and not candidate not in TSS2_CAR:
+    # Detect 0x343 on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
+    if 0x343 in fingerprint[2] and candidate not in TSS2_CAR and not ret.flags & ToyotaFlags.SMART_DSU:
       ret.flags |= ToyotaFlags.DSU_BYPASS.value
 
     if candidate == CAR.TOYOTA_PRIUS:
