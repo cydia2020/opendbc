@@ -47,6 +47,7 @@ class CarController(CarControllerBase):
     self.alert_active = False
     self.resume_off_frames = 0.
     self.standstill_req = False
+    self._standstill_req = False
     self.lead = False
     self.left_lane = False
     self.right_lane = False
@@ -137,7 +138,7 @@ class CarController(CarControllerBase):
     # 4. the reported speed on the CAN network is larger than 0.001 m/s (Toyota starts reporting at 0.3 m/s)
     elif (CC.longActive and actuators.accel > 0.) and self.CP.flags & ToyotaFlags.TOYOTA_INTERCEPTOR_SNG \
          and self.CP.enableGasInterceptor and CS.out.vEgo < 1e-3:
-      interceptor_gas_cmd = 0.12
+      interceptor_gas_cmd = 0.08
     else:
       interceptor_gas_cmd = 0.
 
@@ -168,12 +169,12 @@ class CarController(CarControllerBase):
         # add a 1.5 second hysteresis to when CC.cruiseControl.resume turns off in order to prevent
         # vehicle's dash from blinking
         if self.resume_off_frames >= RESUME_HYSTERESIS_TIME / DT_CTRL:
-            self.standstill_req = True
+            self._standstill_req = True
     else:
         self.resume_off_frames = 0
-        self.standstill_req = False
+        self._standstill_req = False
     # ignore standstill on NO_STOP_TIMER_CAR, and never ignore if self.CP.enableGasInterceptor
-    self.standstill_req = self.standstill_req and (self.CP.carFingerprint not in NO_STOP_TIMER_CAR or self.CP.enableGasInterceptor)
+    self.standstill_req = self._standstill_req and (self.CP.carFingerprint not in NO_STOP_TIMER_CAR or self.CP.enableGasInterceptor)
 
     # handle UI messages
     fcw_alert = hud_control.visualAlert == VisualAlert.fcw

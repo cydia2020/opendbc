@@ -100,7 +100,7 @@ class CarInterface(CarInterfaceBase):
     # TODO: these models can do stop and go, but unclear if it requires sDSU or unplugging DSU.
     #  For now, don't list stop and go functionality in the docs
     if ret.flags & ToyotaFlags.SNG_WITHOUT_DSU:
-      stop_and_go = bool(ret.flags & ToyotaFlags.SMART_DSU.value) or (ret.enableDsu and not docs)
+      stop_and_go = bool(ret.flags & ToyotaFlags.SMART_DSU.value) or ((ret.enableDsu or bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)) and not docs)
 
     if stop_and_go:
       ret.flags |= ToyotaFlags.TOYOTA_INTERCEPTOR_SNG.value
