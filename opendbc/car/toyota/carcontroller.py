@@ -1,6 +1,7 @@
 import copy
+import math
 from opendbc.car import apply_meas_steer_torque_limits, apply_std_steer_angle_limits, common_fault_avoidance, create_gas_interceptor_command,\
-                                        make_tester_present_msg, DT_CTRL, structs
+                                        make_tester_present_msg, DT_CTRL, rate_limit, structs
 from opendbc.car.can_definitions import CanData
 from opendbc.car.common.numpy_fast import clip, interp
 from opendbc.car.interfaces import CarControllerBase
@@ -10,12 +11,15 @@ from opendbc.car.toyota.values import CAR, STATIC_DSU_MSGS, NO_STOP_TIMER_CAR, T
                                         UNSUPPORTED_DSU_CAR
 from opendbc.can.packer import CANPacker
 
+LongCtrlState = structs.CarControl.Actuators.LongControlState
 SteerControlType = structs.CarParams.SteerControlType
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
 AudibleAlert = structs.CarControl.HUDControl.AudibleAlert
 
 #PEDAL_TRANSITION
 PEDAL_TRANSITION = 4.5
+
+ACCELERATION_DUE_TO_GRAVITY = 9.81
 
 # LKA limits
 # EPS faults if you apply torque while the steering rate is above 100 deg/s for too long
@@ -54,6 +58,8 @@ class CarController(CarControllerBase):
     self.steer_rate_counter = 0
     self.prohibit_neg_calculation = True
     self.distance_button = 0
+
+    self.pcm_accel_compensation = 0.0
 
     self.packer = CANPacker(dbc_name)
     self.accel = 0
@@ -141,25 +147,47 @@ class CarController(CarControllerBase):
     else:
       interceptor_gas_cmd = 0.
 
-    # a variation in accel command is more pronounced at higher speeds, let compensatory forces ramp to zero before
-    # applying when speed is high
-    comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
-    # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
-    if not CC.longActive:
-      self.prohibit_neg_calculation = True
-    # don't reset until a reasonable compensatory value is reached
-    if CS.pcm_neutral_force > comp_thresh * self.CP.mass:
-      self.prohibit_neg_calculation = False
-    # limit minimum to only positive until first positive is reached after engagement, don't calculate when long isn't active
-    if CC.longActive and not self.prohibit_neg_calculation:
-      accel_offset = CS.pcm_neutral_force / self.CP.mass
+    # For cars where we allow a higher max acceleration of 2.0 m/s^2, compensate for PCM request overshoot and imprecise braking
+    # TODO: sometimes when switching from brake to gas quickly, CLUTCH->ACCEL_NET shows a slow unwind. make it go to 0 immediately
+    if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT and CC.longActive and not CS.out.cruiseState.standstill:
+      # calculate amount of acceleration PCM should apply to reach target, given pitch
+      accel_due_to_pitch = math.sin(CS.slope_angle) * ACCELERATION_DUE_TO_GRAVITY
+      net_acceleration_request = actuators.accel + accel_due_to_pitch
+
+      # let PCM handle stopping for now
+      pcm_accel_compensation = 0.0
+      if actuators.longControlState != LongCtrlState.stopping:
+        pcm_accel_compensation = 2.0 * (CS.pcm_accel_net - net_acceleration_request)
+
+      # prevent compensation windup
+      pcm_accel_compensation = clip(pcm_accel_compensation, actuators.accel - self.params.ACCEL_MAX,
+                                    actuators.accel - self.params.ACCEL_MIN)
+
+      self.pcm_accel_compensation = rate_limit(pcm_accel_compensation, self.pcm_accel_compensation, -0.01, 0.01)
+      pcm_accel_cmd = actuators.accel - self.pcm_accel_compensation
     else:
-      accel_offset = 0.
-    # only calculate pcm_accel_cmd when long is active to prevent disengagement from accelerator depression
-    if CC.longActive:
-      pcm_accel_cmd = clip(actuators.accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
-    else:
-      pcm_accel_cmd = 0.
+      pcm_accel_compensation = 0.
+      # a variation in accel command is more pronounced at higher speeds, let compensatory forces ramp to zero before
+      # applying when speed is high
+      comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
+      # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
+      if not CC.longActive:
+        self.prohibit_neg_calculation = True
+      # don't reset until a reasonable compensatory value is reached
+      if CS.pcm_neutral_force > comp_thresh * self.CP.mass:
+        self.prohibit_neg_calculation = False
+      # limit minimum to only positive until first positive is reached after engagement, don't calculate when long isn't active
+      if CC.longActive and not self.prohibit_neg_calculation:
+        accel_offset = CS.pcm_neutral_force / self.CP.mass
+      else:
+        accel_offset = 0.
+      # only calculate pcm_accel_cmd when long is active to prevent disengagement from accelerator depression
+      if CC.longActive:
+        pcm_accel_cmd = clip(actuators.accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+      else:
+        pcm_accel_cmd = 0.
+
+    pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
 
     # *** standstill logic ***
     # mimic stock behaviour, set standstill_req to False only when openpilot wants to resume
