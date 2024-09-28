@@ -19,7 +19,9 @@ AudibleAlert = structs.CarControl.HUDControl.AudibleAlert
 #PEDAL_TRANSITION
 PEDAL_TRANSITION = 4.5
 
-ACCELERATION_DUE_TO_GRAVITY = 9.81
+ACCELERATION_DUE_TO_GRAVITY = 9.81  # m/s^2
+
+ACCEL_WINDUP_LIMIT = 0.5  # m/s^2 / frame
 
 # LKA limits
 # EPS faults if you apply torque while the steering rate is above 100 deg/s for too long
@@ -60,6 +62,7 @@ class CarController(CarControllerBase):
     self.distance_button = 0
 
     self.pcm_accel_compensation = 0.0
+    self.permit_braking = 0.0
 
     self.packer = CANPacker(dbc_name)
     self.accel = 0
@@ -121,32 +124,6 @@ class CarController(CarControllerBase):
       can_sends.append(toyotacan.create_lta_steer_command(self.packer, self.CP.steerControlType, self.last_angle,
                                                           lta_active, self.frame // 2, torque_wind_down))
 
-    # *** gas and brake ***
-    if self.CP.enableGasInterceptor and CC.longActive and not self.CP.flags & ToyotaFlags.TOYOTA_INTERCEPTOR_SNG:
-      MAX_INTERCEPTOR_GAS = 0.5
-      # RAV4 has very sensitive gas pedal
-      if self.CP.carFingerprint == CAR.TOYOTA_RAV4:
-        PEDAL_SCALE = interp(CS.out.vEgo, [0.0, MIN_ACC_SPEED, MIN_ACC_SPEED + PEDAL_TRANSITION], [0.15, 0.3, 0.0])
-      elif self.CP.carFingerprint == CAR.TOYOTA_COROLLA:
-        PEDAL_SCALE = interp(CS.out.vEgo, [0.0, MIN_ACC_SPEED, MIN_ACC_SPEED + PEDAL_TRANSITION], [0.3, 0.4, 0.0])
-      else:
-        PEDAL_SCALE = interp(CS.out.vEgo, [0.0, MIN_ACC_SPEED, MIN_ACC_SPEED + PEDAL_TRANSITION], [0.4, 0.5, 0.0])
-      # offset for creep and windbrake
-      pedal_offset = interp(CS.out.vEgo, [0.0, 2.3, MIN_ACC_SPEED + PEDAL_TRANSITION], [-.4, 0.0, 0.2])
-      pedal_command = PEDAL_SCALE * (actuators.accel + pedal_offset)
-      interceptor_gas_cmd = clip(pedal_command, 0., MAX_INTERCEPTOR_GAS)
-    # Full-speed Dynamic RADAR Cruise Control automatic resume logic using a comma pedal
-    # Activated when these conditions are met:
-    # 1. openpilot is controlling longitudinal, and is requesting more than 0.0 m/s^2 acceleration **WHEN**
-    # 2. the vehicle that openpilot is operating on a car with self.CP.flags & ToyotaFlags.TOYOTA_INTERCEPTOR_SNG flag,
-    # 3. a comma pedal is detected on the CAN network **AND**
-    # 4. the reported speed on the CAN network is larger than 0.001 m/s (Toyota starts reporting at 0.3 m/s)
-    elif (CC.longActive and actuators.accel > 0.) and self.CP.flags & ToyotaFlags.TOYOTA_INTERCEPTOR_SNG \
-         and self.CP.enableGasInterceptor and CS.out.vEgo < 1e-3:
-      interceptor_gas_cmd = 0.08
-    else:
-      interceptor_gas_cmd = 0.
-
     # For cars where we allow a higher max acceleration of 2.0 m/s^2, compensate for PCM request overshoot and imprecise braking
     # TODO: sometimes when switching from brake to gas quickly, CLUTCH->ACCEL_NET shows a slow unwind. make it go to 0 immediately
     if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT and CC.longActive and not CS.out.cruiseState.standstill:
@@ -165,27 +142,26 @@ class CarController(CarControllerBase):
 
       self.pcm_accel_compensation = rate_limit(pcm_accel_compensation, self.pcm_accel_compensation, -0.01, 0.01)
       pcm_accel_cmd = actuators.accel - self.pcm_accel_compensation
+
+      # Along with rate limiting positive jerk below, this greatly improves gas response time
+      # Consider the net acceleration request that the PCM should be applying (pitch included)
+      if net_acceleration_request < 0.1:
+        self.permit_braking = True
+      elif net_acceleration_request > 0.2:
+        self.permit_braking = False
     else:
-      pcm_accel_compensation = 0.
-      # a variation in accel command is more pronounced at higher speeds, let compensatory forces ramp to zero before
-      # applying when speed is high
+      self.permit_braking = True
+      pcm_accel_compensation = 0.0
+      # Set thresholds for compensatory force calculations
       comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
-      # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
       if not CC.longActive:
-        self.prohibit_neg_calculation = True
-      # don't reset until a reasonable compensatory value is reached
+          self.prohibit_neg_calculation = True
       if CS.pcm_neutral_force > comp_thresh * self.CP.mass:
-        self.prohibit_neg_calculation = False
-      # limit minimum to only positive until first positive is reached after engagement, don't calculate when long isn't active
-      if CC.longActive and not self.prohibit_neg_calculation:
-        accel_offset = CS.pcm_neutral_force / self.CP.mass
-      else:
-        accel_offset = 0.
-      # only calculate pcm_accel_cmd when long is active to prevent disengagement from accelerator depression
-      if CC.longActive:
-        pcm_accel_cmd = clip(actuators.accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
-      else:
-        pcm_accel_cmd = 0.
+          self.prohibit_neg_calculation = False
+      # Calculate acceleration offset only when allowed
+      accel_offset = CS.pcm_neutral_force / self.CP.mass if CC.longActive and not self.prohibit_neg_calculation else 0.0
+      # Compute PCM acceleration command only if long control is active
+      pcm_accel_cmd = clip(actuators.accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX) if CC.longActive else 0.0
 
     pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
 
@@ -201,7 +177,7 @@ class CarController(CarControllerBase):
         self.resume_off_frames = 0
         self._standstill_req = False
     # ignore standstill on NO_STOP_TIMER_CAR, and never ignore if self.CP.enableGasInterceptor
-    self.standstill_req = self._standstill_req and (self.CP.carFingerprint not in NO_STOP_TIMER_CAR or self.CP.enableGasInterceptor)
+    self.standstill_req = self._standstill_req and self.CP.carFingerprint not in NO_STOP_TIMER_CAR
 
     # handle UI messages
     fcw_alert = hud_control.visualAlert == VisualAlert.fcw
@@ -233,17 +209,11 @@ class CarController(CarControllerBase):
       if pcm_cancel_cmd and self.CP.carFingerprint in UNSUPPORTED_DSU_CAR:
         can_sends.append(toyotacan.create_acc_cancel_command(self.packer))
       elif self.CP.openpilotLongitudinalControl:
-        can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, actuators.accel, CS.out.aEgo, CC.longActive, pcm_cancel_cmd,
+        can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, actuators.accel, self.permit_braking, CS.out.aEgo, CC.longActive, pcm_cancel_cmd,
                                                         self.standstill_req, lead, CS.acc_type, fcw_alert, self.distance_button))
         self.accel = pcm_accel_cmd
       else:
-        can_sends.append(toyotacan.create_accel_command(self.packer, 0, 0, 0, False, pcm_cancel_cmd, False, lead, CS.acc_type, False, self.distance_button))
-
-    if self.frame % 2 == 0 and self.CP.enableGasInterceptor and self.CP.openpilotLongitudinalControl:
-      # send exactly zero if gas cmd is zero. Interceptor will send the max between read value and gas cmd.
-      # This prevents unexpected pedal range rescaling
-      can_sends.append(create_gas_interceptor_command(self.packer, interceptor_gas_cmd, self.frame // 2))
-      self.gas = interceptor_gas_cmd
+        can_sends.append(toyotacan.create_accel_command(self.packer, 0, 0, False, 0, False, pcm_cancel_cmd, False, lead, CS.acc_type, False, self.distance_button))
 
     # *** hud ui ***
     # usually this is sent at a much lower rate, but no adverse effects has been observed when sent at a much higher rate

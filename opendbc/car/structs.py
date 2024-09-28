@@ -382,7 +382,6 @@ class CarParams:
   steerActuatorDelay: float = auto_field()  # Steering wheel actuator delay in seconds
   longitudinalActuatorDelay: float = auto_field()  # Gas/Brake actuator delay in seconds
   openpilotLongitudinalControl: bool = auto_field()  # is openpilot doing the longitudinal control?
-  enableGasInterceptor: bool = auto_field()
   carVin: str = auto_field()  # VIN number queried during fingerprinting
   dashcamOnly: bool = auto_field()
   passive: bool = auto_field()  # is openpilot in control?
