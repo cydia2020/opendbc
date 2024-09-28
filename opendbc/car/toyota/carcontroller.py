@@ -176,7 +176,7 @@ class CarController(CarControllerBase):
     else:
         self.resume_off_frames = 0
         self._standstill_req = False
-    # ignore standstill on NO_STOP_TIMER_CAR, and never ignore if self.CP.enableGasInterceptor
+    # ignore standstill on NO_STOP_TIMER_CAR
     self.standstill_req = self._standstill_req and self.CP.carFingerprint not in NO_STOP_TIMER_CAR
 
     # handle UI messages
