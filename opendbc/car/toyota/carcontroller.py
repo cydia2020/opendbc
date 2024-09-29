@@ -1,12 +1,14 @@
 import copy
-from opendbc.car import apply_meas_steer_torque_limits, apply_std_steer_angle_limits, common_fault_avoidance,\
-                                        make_tester_present_msg, DT_CTRL, structs
+import math
+from opendbc.car import apply_meas_steer_torque_limits, apply_std_steer_angle_limits, common_fault_avoidance, \
+                                        make_tester_present_msg, rate_limit, structs, DT_CTRL
 from opendbc.car.can_definitions import CanData
 from opendbc.car.common.numpy_fast import clip, interp
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.toyota import toyotacan
 from opendbc.car.toyota.values import CAR, STATIC_DSU_MSGS, NO_STOP_TIMER_CAR, TSS2_CAR, \
-                                        CarControllerParams, ToyotaFlags, UNSUPPORTED_DSU_CAR
+                                        CarControllerParams, ToyotaFlags, \
+                                        UNSUPPORTED_DSU_CAR
 from opendbc.can.packer import CANPacker
 
 LongCtrlState = structs.CarControl.Actuators.LongControlState
@@ -14,8 +16,7 @@ SteerControlType = structs.CarParams.SteerControlType
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
 AudibleAlert = structs.CarControl.HUDControl.AudibleAlert
 
-#PEDAL_TRANSITION
-PEDAL_TRANSITION = 4.5
+ACCELERATION_DUE_TO_GRAVITY = 9.81  # m/s^2
 
 ACCEL_WINDUP_LIMIT = 0.5  # m/s^2 / frame
 
@@ -118,23 +119,53 @@ class CarController(CarControllerBase):
       torque_wind_down = 100 if lta_active and full_torque_condition else 0
       can_sends.append(toyotacan.create_lta_steer_command(self.packer, self.CP.steerControlType, self.last_angle,
                                                           lta_active, self.frame // 2, torque_wind_down))
+    # *** gas and brake ***
+    # For cars where we allow a higher max acceleration of 2.0 m/s^2, compensate for PCM request overshoot and imprecise braking
+    # TODO: sometimes when switching from brake to gas quickly, CLUTCH->ACCEL_NET shows a slow unwind. make it go to 0 immediately
+    if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
+      if CC.longActive and not CS.out.cruiseState.standstill:
+        # calculate amount of acceleration PCM should apply to reach target, given pitch
+        accel_due_to_pitch = math.sin(CS.slope_angle) * ACCELERATION_DUE_TO_GRAVITY
+        net_acceleration_request = actuators.accel + accel_due_to_pitch
 
-    # Set thresholds for compensatory force calculations
-    comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
-    if not CC.longActive:
-      self.prohibit_neg_calculation = True
-    if CS.pcm_accel_net > comp_thresh:
-      self.prohibit_neg_calculation = False
-    # Calculate acceleration offset only when allowed
-    self.pcm_accel_compensation = CS.pcm_accel_net if CC.longActive and not self.prohibit_neg_calculation else 0.0
-    # Compute PCM acceleration command only if long control is active
-    pcm_accel_cmd = clip(actuators.accel + self.pcm_accel_compensation, self.params.ACCEL_MIN, self.params.ACCEL_MAX) if CC.longActive and not \
-       CS.out.cruiseState.standstill else 0.0
+        # let PCM handle stopping for now
+        pcm_accel_compensation = 0.0
+        if actuators.longControlState != LongCtrlState.stopping:
+          pcm_accel_compensation = 2.0 * (CS.pcm_accel_net - net_acceleration_request)
 
-    if pcm_accel_cmd < 0.1:
-      self.permit_braking = True
-    elif pcm_accel_cmd > 0.2:
-      self.permit_braking = False
+        # prevent compensation windup
+        pcm_accel_compensation = clip(pcm_accel_compensation, actuators.accel - self.params.ACCEL_MAX,
+                                      actuators.accel - self.params.ACCEL_MIN)
+
+        self.pcm_accel_compensation = rate_limit(pcm_accel_compensation, self.pcm_accel_compensation, -0.01, 0.01)
+        pcm_accel_cmd = actuators.accel - self.pcm_accel_compensation
+
+        # Along with rate limiting positive jerk below, this greatly improves gas response time
+        # Consider the net acceleration request that the PCM should be applying (pitch included)
+        if net_acceleration_request < 0.1:
+          self.permit_braking = True
+        elif net_acceleration_request > 0.2:
+          self.permit_braking = False
+      else:
+        self.pcm_accel_compensation = 0.0
+        pcm_accel_cmd = actuators.accel
+        self.permit_braking = True
+    else:
+      # Set thresholds for compensatory force calculations
+      comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
+      if not CC.longActive:
+        self.prohibit_neg_calculation = True
+      if CS.pcm_accel_net > comp_thresh:
+        self.prohibit_neg_calculation = False
+      # Calculate acceleration offset only when allowed
+      self.pcm_accel_compensation = CS.pcm_accel_net if CC.longActive and not self.prohibit_neg_calculation else 0.0
+      # Compute PCM acceleration command only if long control is active
+      pcm_accel_cmd = clip(actuators.accel + self.pcm_accel_compensation, self.params.ACCEL_MIN, self.params.ACCEL_MAX) if CC.longActive and not \
+         CS.out.cruiseState.standstill else 0.0
+      if pcm_accel_cmd < 0.1:
+        self.permit_braking = True
+      elif pcm_accel_cmd > 0.2:
+        self.permit_braking = False
 
     # *** standstill logic ***
     # mimic stock behaviour, set standstill_req to False only when openpilot wants to resume
