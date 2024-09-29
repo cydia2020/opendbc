@@ -1,14 +1,13 @@
 import copy
 import math
-from opendbc.car import apply_meas_steer_torque_limits, apply_std_steer_angle_limits, common_fault_avoidance, create_gas_interceptor_command,\
+from opendbc.car import apply_meas_steer_torque_limits, apply_std_steer_angle_limits, common_fault_avoidance,\
                                         make_tester_present_msg, DT_CTRL, rate_limit, structs
 from opendbc.car.can_definitions import CanData
 from opendbc.car.common.numpy_fast import clip, interp
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.toyota import toyotacan
 from opendbc.car.toyota.values import CAR, STATIC_DSU_MSGS, NO_STOP_TIMER_CAR, TSS2_CAR, \
-                                        CarControllerParams, ToyotaFlags, MIN_ACC_SPEED, \
-                                        UNSUPPORTED_DSU_CAR
+                                        CarControllerParams, ToyotaFlags, UNSUPPORTED_DSU_CAR
 from opendbc.can.packer import CANPacker
 
 LongCtrlState = structs.CarControl.Actuators.LongControlState
