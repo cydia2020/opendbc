@@ -123,7 +123,7 @@ class CarController(CarControllerBase):
     comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
     if not CC.longActive:
       self.prohibit_neg_calculation = True
-    if CS.pcm_accel_compensation > comp_thresh:
+    if CS.pcm_accel_net > comp_thresh:
       self.prohibit_neg_calculation = False
     # Calculate acceleration offset only when allowed
     self.pcm_accel_compensation = CS.pcm_accel_net if CC.longActive and not self.prohibit_neg_calculation else 0.0
