@@ -10,7 +10,6 @@ class CarInterface(CarInterfaceBase):
     ret.notCar = True
     ret.carName = "body"
     ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.body)]
-    ret.dashcamOnly = True
 
     ret.minSteerSpeed = -math.inf
     ret.maxLateralAccel = math.inf  # TODO: set to a reasonable value
