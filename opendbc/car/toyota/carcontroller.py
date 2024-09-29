@@ -1,7 +1,6 @@
 import copy
-import math
 from opendbc.car import apply_meas_steer_torque_limits, apply_std_steer_angle_limits, common_fault_avoidance,\
-                                        make_tester_present_msg, DT_CTRL, rate_limit, structs
+                                        make_tester_present_msg, DT_CTRL, structs
 from opendbc.car.can_definitions import CanData
 from opendbc.car.common.numpy_fast import clip, interp
 from opendbc.car.interfaces import CarControllerBase
@@ -17,8 +16,6 @@ AudibleAlert = structs.CarControl.HUDControl.AudibleAlert
 
 #PEDAL_TRANSITION
 PEDAL_TRANSITION = 4.5
-
-ACCELERATION_DUE_TO_GRAVITY = 9.81  # m/s^2
 
 ACCEL_WINDUP_LIMIT = 0.5  # m/s^2 / frame
 
@@ -40,7 +37,6 @@ COMPENSATORY_CALCULATION_THRESHOLD_V = [-0.2, -0.2, -0.05]  # m/s^2
 COMPENSATORY_CALCULATION_THRESHOLD_BP = [0., 20., 32.]  # m/s
 
 # resume, lead, and lane lines hysteresis
-RESUME_HYSTERESIS_TIME = 1.5  # seconds
 UI_HYSTERESIS_TIME = 1.  # seconds
 
 class CarController(CarControllerBase):
@@ -123,34 +119,6 @@ class CarController(CarControllerBase):
       can_sends.append(toyotacan.create_lta_steer_command(self.packer, self.CP.steerControlType, self.last_angle,
                                                           lta_active, self.frame // 2, torque_wind_down))
 
-    # For cars where we allow a higher max acceleration of 2.0 m/s^2, compensate for PCM request overshoot and imprecise braking
-    # TODO: sometimes when switching from brake to gas quickly, CLUTCH->ACCEL_NET shows a slow unwind. make it go to 0 immediately
-    if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT and CC.longActive and not CS.out.cruiseState.standstill:
-      # calculate amount of acceleration PCM should apply to reach target, given pitch
-      accel_due_to_pitch = math.sin(CS.slope_angle) * ACCELERATION_DUE_TO_GRAVITY
-      net_acceleration_request = actuators.accel + accel_due_to_pitch
-
-      # let PCM handle stopping for now
-      pcm_accel_compensation = 0.0
-      if actuators.longControlState != LongCtrlState.stopping:
-        pcm_accel_compensation = 2.0 * (CS.pcm_accel_net - net_acceleration_request)
-
-      # prevent compensation windup
-      pcm_accel_compensation = clip(pcm_accel_compensation, actuators.accel - self.params.ACCEL_MAX,
-                                    actuators.accel - self.params.ACCEL_MIN)
-
-      self.pcm_accel_compensation = rate_limit(pcm_accel_compensation, self.pcm_accel_compensation, -0.01, 0.01)
-      pcm_accel_cmd = actuators.accel - self.pcm_accel_compensation
-
-      # Along with rate limiting positive jerk below, this greatly improves gas response time
-      # Consider the net acceleration request that the PCM should be applying (pitch included)
-      if net_acceleration_request < 0.1:
-        self.permit_braking = True
-      elif net_acceleration_request > 0.2:
-        self.permit_braking = False
-    else:
-      self.permit_braking = True
-      pcm_accel_compensation = 0.0
       # Set thresholds for compensatory force calculations
       comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
       if not CC.longActive:
@@ -158,9 +126,15 @@ class CarController(CarControllerBase):
       if CS.pcm_neutral_force > comp_thresh * self.CP.mass:
           self.prohibit_neg_calculation = False
       # Calculate acceleration offset only when allowed
-      accel_offset = CS.pcm_neutral_force / self.CP.mass if CC.longActive and not self.prohibit_neg_calculation else 0.0
+      self.pcm_accel_compensation = CS.pcm_accel_net if CC.longActive and not self.prohibit_neg_calculation else 0.0
       # Compute PCM acceleration command only if long control is active
-      pcm_accel_cmd = clip(actuators.accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX) if CC.longActive else 0.0
+      pcm_accel_cmd = clip(actuators.accel + self.pcm_accel_compensation, self.params.ACCEL_MIN, self.params.ACCEL_MAX) if CC.longActive and not \
+          CS.out.cruiseState.standstill else 0.0
+
+      if pcm_accel_cmd < 0.1:
+        self.permit_braking = True
+      elif pcm_accel_cmd > 0.2:
+        self.permit_braking = False
 
     pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
 
@@ -170,7 +144,7 @@ class CarController(CarControllerBase):
         self.resume_off_frames += 1  # frame counter for hysteresis
         # add a 1.5 second hysteresis to when CC.cruiseControl.resume turns off in order to prevent
         # vehicle's dash from blinking
-        if self.resume_off_frames >= RESUME_HYSTERESIS_TIME / DT_CTRL:
+        if self.resume_off_frames >= UI_HYSTERESIS_TIME / DT_CTRL:
             self._standstill_req = True
     else:
         self.resume_off_frames = 0
@@ -208,11 +182,11 @@ class CarController(CarControllerBase):
       if pcm_cancel_cmd and self.CP.carFingerprint in UNSUPPORTED_DSU_CAR:
         can_sends.append(toyotacan.create_acc_cancel_command(self.packer))
       elif self.CP.openpilotLongitudinalControl:
-        can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, actuators.accel, self.permit_braking, CS.out.aEgo, CC.longActive, pcm_cancel_cmd,
-                                                        self.standstill_req, lead, CS.acc_type, fcw_alert, self.distance_button))
+        can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, actuators.accel, self.permit_braking, CS.out.aEgo, CC.longActive,\
+                                                        pcm_cancel_cmd, self.standstill_req, lead, CS.acc_type, fcw_alert, self.distance_button))
         self.accel = pcm_accel_cmd
       else:
-        can_sends.append(toyotacan.create_accel_command(self.packer, 0, 0, False, 0, False, pcm_cancel_cmd, False, lead, CS.acc_type, False, self.distance_button))
+        can_sends.append(toyotacan.create_accel_command(self.packer, 0, 0, 0, 0, 0, pcm_cancel_cmd, 0, lead, CS.acc_type, 0, self.distance_button))
 
     # *** hud ui ***
     # usually this is sent at a much lower rate, but no adverse effects has been observed when sent at a much higher rate
