@@ -119,24 +119,22 @@ class CarController(CarControllerBase):
       can_sends.append(toyotacan.create_lta_steer_command(self.packer, self.CP.steerControlType, self.last_angle,
                                                           lta_active, self.frame // 2, torque_wind_down))
 
-      # Set thresholds for compensatory force calculations
-      comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
-      if not CC.longActive:
-          self.prohibit_neg_calculation = True
-      if CS.pcm_neutral_force > comp_thresh * self.CP.mass:
-          self.prohibit_neg_calculation = False
-      # Calculate acceleration offset only when allowed
-      self.pcm_accel_compensation = CS.pcm_accel_net if CC.longActive and not self.prohibit_neg_calculation else 0.0
-      # Compute PCM acceleration command only if long control is active
-      pcm_accel_cmd = clip(actuators.accel + self.pcm_accel_compensation, self.params.ACCEL_MIN, self.params.ACCEL_MAX) if CC.longActive and not \
-          CS.out.cruiseState.standstill else 0.0
+    # Set thresholds for compensatory force calculations
+    comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
+    if not CC.longActive:
+      self.prohibit_neg_calculation = True
+    if CS.pcm_neutral_force > comp_thresh * self.CP.mass:
+      self.prohibit_neg_calculation = False
+    # Calculate acceleration offset only when allowed
+    self.pcm_accel_compensation = CS.pcm_accel_net if CC.longActive and not self.prohibit_neg_calculation else 0.0
+    # Compute PCM acceleration command only if long control is active
+    pcm_accel_cmd = clip(actuators.accel + self.pcm_accel_compensation, self.params.ACCEL_MIN, self.params.ACCEL_MAX) if CC.longActive and not \
+       CS.out.cruiseState.standstill else 0.0
 
-      if pcm_accel_cmd < 0.1:
-        self.permit_braking = True
-      elif pcm_accel_cmd > 0.2:
-        self.permit_braking = False
-
-    pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+    if pcm_accel_cmd < 0.1:
+      self.permit_braking = True
+    elif pcm_accel_cmd > 0.2:
+      self.permit_braking = False
 
     # *** standstill logic ***
     # mimic stock behaviour, set standstill_req to False only when openpilot wants to resume
