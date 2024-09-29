@@ -105,9 +105,6 @@ class CarInterface(CarInterfaceBase):
     if ret.flags & ToyotaFlags.SNG_WITHOUT_DSU:
       stop_and_go = bool(ret.flags & ToyotaFlags.SMART_DSU.value) or ((ret.enableDsu or bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)) and not docs)
 
-    if stop_and_go:
-      ret.flags |= ToyotaFlags.TOYOTA_INTERCEPTOR_SNG.value
-
     ret.centerToFront = ret.wheelbase * 0.44
 
     # TODO: Some TSS-P platforms have BSM, but are flipped based on region or driving direction.
