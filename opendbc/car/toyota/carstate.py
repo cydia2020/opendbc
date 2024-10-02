@@ -197,10 +197,10 @@ class CarState(CarStateBase):
 
     if self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:
       self.lkas_hud = copy.copy(cp_cam.vl["LKAS_HUD"])
-      self.sws_beeps = bool(cp_cam.vl["LKAS_HUD"]["TWO_BEEPS"])
-      self.lda_left_lane = bool(cp_cam.vl["LKAS_HUD"]["LEFT_LINE"] == 3)
-      self.lda_right_lane = bool(cp_cam.vl["LKAS_HUD"]["RIGHT_LINE"] == 3)
-      ret.lkasEnabled = bool(cp_cam.vl["LKAS_HUD"]["LDA_SA_TOGGLE"])
+      self.sws_beeps = (cp_cam.vl["LKAS_HUD"]["TWO_BEEPS"])
+      self.lda_left_lane = (cp_cam.vl["LKAS_HUD"]["LEFT_LINE"] == 3)
+      self.lda_right_lane = (cp_cam.vl["LKAS_HUD"]["RIGHT_LINE"] == 3)
+      self.lda_sa_toggle = (cp_cam.vl["LKAS_HUD"]["LDA_SA_TOGGLE"])
 
     if self.CP.carFingerprint not in UNSUPPORTED_DSU_CAR:
       self.pcm_follow_distance = cp.vl["PCM_CRUISE_2"]["PCM_FOLLOW_DISTANCE"]
