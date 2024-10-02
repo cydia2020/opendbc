@@ -223,7 +223,7 @@ class CarController(CarControllerBase):
     if self.frame % 3 == 0 and self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:
       can_sends.append(toyotacan.create_ui_command(self.packer, steer_alert, cancel_chime, self.left_lane,
                                                    self.right_lane, CC.enabled, CS.lkas_hud, CS.lda_left_lane,
-                                                   CS.lda_right_lane, CS.sws_beeps, CS.lda_sa_toggle, alert_prompt,
+                                                   CS.lda_right_lane, CS.sws_beeps, CS.out.lkasEnabled, alert_prompt,
                                                    alert_prompt_repeat, alert_immediate))
 
     if self.CP.enableDsu or self.CP.flags & ToyotaFlags.DISABLE_RADAR.value:
