@@ -78,6 +78,8 @@ class CarState:
   steeringPressed: bool = auto_field()  # if the user is using the steering wheel
   steerFaultTemporary: bool = auto_field()  # temporary EPS fault
   steerFaultPermanent: bool = auto_field()  # permanent EPS fault
+  lkasDisabled: bool = auto_field()  # LKAS being enabled is required to control car
+  lkasEnabled: bool = auto_field()  # LKAS being disabled is required to control car
   stockAeb: bool = auto_field()
   stockFcw: bool = auto_field()
   espDisabled: bool = auto_field()
@@ -395,6 +397,9 @@ class CarParams:
   networkLocation: 'CarParams.NetworkLocation' = field(default_factory=lambda: CarParams.NetworkLocation.fwdCamera)
 
   wheelSpeedFactor: float = auto_field()  # Multiplier on wheels speeds to computer actual speeds
+
+  secOcRequired: bool = auto_field()
+  secOcKeyAvailable: bool = auto_field()
 
   @auto_dataclass
   class LongitudinalPIDTuning:
