@@ -186,6 +186,7 @@ struct CarState {
   regenBraking @45 :Bool; # this is user pedal only
   parkingBrake @39 :Bool;
   brakeHoldActive @38 :Bool;
+  brakeLights @19 :Bool;
 
   # steering wheel
   steeringAngleDeg @7 :Float32;
@@ -234,6 +235,8 @@ struct CarState {
 
   # process meta
   cumLagMs @50 :Float32;
+  # combination meter dimmer states
+  meterBrightness @55 :Float32;
 
   struct WheelSpeeds {
     # optional wheel speeds
@@ -289,7 +292,6 @@ struct CarState {
 
   # deprecated
   errorsDEPRECATED @0 :List(OnroadEventDEPRECATED.EventName);
-  brakeLightsDEPRECATED @19 :Bool;
   steeringRateLimitedDEPRECATED @29 :Bool;
   canMonoTimesDEPRECATED @12: List(UInt64);
   canRcvTimeoutDEPRECATED @49 :Bool;
@@ -395,6 +397,7 @@ struct CarControl {
     rightLaneDepart @8: Bool;
     leftLaneDepart @9: Bool;
     leadDistanceBars @10: Int8;  # 1-3: 1 is closest, 3 is farthest. some ports may utilize 2-4 bars instead
+    enableVehicleBuzzer @11: Bool;
 
     enum VisualAlert {
       # these are the choices from the Honda
