@@ -208,6 +208,9 @@ class CarState(CarStateBase):
       self.lda_left_lane = (cp_cam.vl["LKAS_HUD"]["LEFT_LINE"] == 3)
       self.lda_right_lane = (cp_cam.vl["LKAS_HUD"]["RIGHT_LINE"] == 3)
       self.lda_sa_toggle = (cp_cam.vl["LKAS_HUD"]["LDA_SA_TOGGLE"])
+      ret.invalidLkasSetting = bool(cp_cam.vl["LKAS_HUD"]["LDA_SA_TOGGLE"])
+    else:
+      ret.invalidLkasSetting = False
 
     if self.CP.carFingerprint not in UNSUPPORTED_DSU_CAR:
       self.pcm_follow_distance = cp.vl["PCM_CRUISE_2"]["PCM_FOLLOW_DISTANCE"]
