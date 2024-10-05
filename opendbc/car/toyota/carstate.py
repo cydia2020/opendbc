@@ -258,7 +258,8 @@ class CarState(CarStateBase):
         ("ACC_CONTROL", 33),
       ]
 
-    if CP.carFingerprint not in (TSS2_CAR - RADAR_ACC_CAR) and not CP.enableDsu and not CP.flags & ToyotaFlags.DISABLE_RADAR.value:
+    if not CP.flags & ToyotaFlags.DSU_BYPASS.value and CP.carFingerprint not in (TSS2_CAR - RADAR_ACC_CAR) and \
+       not CP.enableDsu and not CP.flags & ToyotaFlags.DISABLE_RADAR.value:
       messages += [
         ("PRE_COLLISION", 33),
       ]
