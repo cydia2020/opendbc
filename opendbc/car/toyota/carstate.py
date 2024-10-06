@@ -56,7 +56,11 @@ class CarState(CarStateBase):
 
   def update(self, cp, cp_cam, *_) -> structs.CarState:
     ret = structs.CarState()
-    cp_acc = cp_cam if self.CP.carFingerprint in (TSS2_CAR - RADAR_ACC_CAR) else cp
+    # assume camera sends longitudinal signal when
+    # 1- TSS 2.0 cars, and not TSS 2.0 RADAR ACC cars
+    # 2- TSS-P cars with Irene's DSU bypass harness installed
+    cp_acc = cp_cam if (self.CP.carFingerprint in (TSS2_CAR - RADAR_ACC_CAR) or bool(self.CP.flags & ToyotaFlags.DSU_BYPASS.value)) else cp
+
 
     # Describes the acceleration request from the PCM if on flat ground, may be higher or lower if pitched
     # CLUTCH->ACCEL_NET is only accurate for gas, PCM_CRUISE->ACCEL_NET is only accurate for brake
@@ -169,11 +173,6 @@ class CarState(CarStateBase):
       ret.accFaulted = cp.vl["PCM_CRUISE_2"]["ACC_FAULTED"] != 0
       ret.cruiseState.available = cp.vl["PCM_CRUISE_2"]["MAIN_ON"] != 0
       ret.cruiseState.speed = cp.vl["PCM_CRUISE_2"]["SET_SPEED"] * CV.KPH_TO_MS
-
-    # assume camera sends longitudinal signal when
-    # 1- TSS 2.0 cars, and not TSS 2.0 RADAR ACC cars
-    # 2- TSS-P cars with Irene's DSU bypass harness installed
-    cp_acc = cp_cam if (self.CP.carFingerprint in (TSS2_CAR - RADAR_ACC_CAR) or bool(self.CP.flags & ToyotaFlags.DSU_BYPASS.value)) else cp
 
     # if TSS 2.0 or bypassing DSU, longitudinal messages (ACC, PCS) will be available for panda to read before it's filtered
     if bool(self.CP.flags & ToyotaFlags.DSU_BYPASS.value) or (self.CP.carFingerprint in TSS2_CAR and not self.CP.flags & ToyotaFlags.DISABLE_RADAR.value):
