@@ -46,7 +46,7 @@ class CarControllerParams:
 class ToyotaFlags(IntFlag):
   # Irene's flags
   DSU_BYPASS = 2
-  SECONDARY_STEER_ANGLE = 2048
+  SECONDARY_STEER_ANGLE = 4096
 
   # Detected flags
   HYBRID = 1
