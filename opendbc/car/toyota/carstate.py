@@ -207,7 +207,7 @@ class CarState(CarStateBase):
       self.lda_left_lane = (cp_cam.vl["LKAS_HUD"]["LEFT_LINE"] == 3)
       self.lda_right_lane = (cp_cam.vl["LKAS_HUD"]["RIGHT_LINE"] == 3)
       self.lda_sa_toggle = (cp_cam.vl["LKAS_HUD"]["LDA_SA_TOGGLE"])
-      ret.invalidLkasSetting = bool(cp_cam.vl["LKAS_HUD"]["LDA_SA_TOGGLE"])
+      ret.invalidLkasSetting = (cp_cam.vl["LKAS_HUD"]["LDA_SA_TOGGLE"] == 1)
     else:
       ret.invalidLkasSetting = False
 
