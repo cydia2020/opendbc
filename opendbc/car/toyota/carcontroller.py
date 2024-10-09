@@ -213,7 +213,7 @@ class CarController(CarControllerBase):
         self.resume_off_frames = 0
         self._standstill_req = False
     # ignore standstill on NO_STOP_TIMER_CAR
-    self.standstill_req = (actuators.longControlState == LongCtrlState.stopping or self._standstill_req) \
+    self.standstill_req = actuators.longControlState == LongCtrlState.stopping and self._standstill_req \
                           and self.CP.carFingerprint not in NO_STOP_TIMER_CAR and CS.out.vEgo < 1e-3
 
     # handle UI messages
