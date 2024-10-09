@@ -155,6 +155,8 @@ class CarInterface(CarInterfaceBase):
 
     tune = ret.longitudinalTuning
     ret.stoppingDecelRate = 0.24
+    tune.kiBP = [0., 5.]
+    tune.kiV = [0.8, 1.2]
     if candidate in TSS2_CAR:
       ret.vEgoStopping = 0.25
       ret.vEgoStarting = 0.25
@@ -162,9 +164,6 @@ class CarInterface(CarInterfaceBase):
       # This also prevents unnecessary request windup due to internal car jerk limits
       if ret.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
         tune.kiV = [0.25]
-    else:
-      tune.kiBP = [0.]
-      tune.kiV = [1.2]
 
     return ret
 
