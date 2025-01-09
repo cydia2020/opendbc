@@ -114,10 +114,8 @@ class CarState(CarStateBase):
     if self.accurate_steer_angle_seen:
       acc_angle_deg = secondary_angle_deg if self.CP.flags & ToyotaFlags.SECONDARY_STEER_ANGLE else torque_sensor_angle_deg
       # Offset seems to be invalid for large steering angles and high angle rates
-      # Compute offset after re-enabling
-      if (abs(ret.steeringAngleDeg) < 90 or (bool(cp.vl["PCM_CRUISE"]["CRUISE_ACTIVE"]) and not self.cruise_active_prev)) \
-         and cp.can_valid:
-        self.angle_offset.update(acc_angle_deg - ret.steeringAngleDeg)
+      if abs(ret.steeringAngleDeg) < 90 and abs(ret.steeringRateDeg) < 100 and cp.can_valid:
+        self.angle_offset.update(torque_sensor_angle_deg - ret.steeringAngleDeg)
 
       if self.angle_offset.initialized:
         ret.steeringAngleOffsetDeg = self.angle_offset.x
@@ -251,7 +249,7 @@ class CarState(CarStateBase):
 
     # add zss if detected
     if CP.flags & ToyotaFlags.SECONDARY_STEER_ANGLE:
-      pt_messages.append(("SECONDARY_STEER_ANGLE", 0))  # rate inconsistent
+      pt_messages.append(("SECONDARY_STEER_ANGLE", 83))
 
     if CP.enableBsm:
       pt_messages.append(("BSM", 1))
