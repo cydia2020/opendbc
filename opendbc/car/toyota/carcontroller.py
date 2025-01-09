@@ -17,6 +17,7 @@ Ecu = structs.CarParams.Ecu
 LongCtrlState = structs.CarControl.Actuators.LongControlState
 SteerControlType = structs.CarParams.SteerControlType
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
+AudibleAlert = structs.CarControl.HUDControl.AudibleAlert
 
 # The up limit allows the brakes/gas to unwind quickly leaving a stop,
 # the down limit roughly matches the rate of ACCEL_NET, reducing PCM compensation windup
@@ -36,6 +37,12 @@ MAX_USER_TORQUE = 500
 MAX_LTA_ANGLE = 94.9461  # deg
 MAX_LTA_DRIVER_TORQUE_ALLOWANCE = 150  # slightly above steering pressed allows some resistance when changing lanes
 
+# PCM compensatory force calculation threshold interpolation values
+COMPENSATORY_CALCULATION_THRESHOLD_V = [-0.2, -0.2, -0.05]  # m/s^2
+COMPENSATORY_CALCULATION_THRESHOLD_BP = [0., 20., 32.]  # m/s
+
+# resume, lead, and lane lines hysteresis
+UI_HYSTERESIS_TIME = 1.  # seconds
 
 def get_long_tune(CP, params):
   kiBP = [0.]
@@ -46,8 +53,8 @@ def get_long_tune(CP, params):
     kdV = [0.25 / 4]
 
   else:
-    kiBP = [0., 5., 35.]
-    kiV = [3.6, 2.4, 1.5]
+    kiBP = [0., 5.]
+    kiV = [0.8, 1.2]
 
   return PIDController(0.0, (kiBP, kiV), k_f=1.0, k_d=(kdBP, kdV),
                        pos_limit=params.ACCEL_MAX, neg_limit=params.ACCEL_MIN,
@@ -61,10 +68,15 @@ class CarController(CarControllerBase):
     self.last_steer = 0
     self.last_angle = 0
     self.alert_active = False
-    self.last_standstill = False
+    self.resume_off_frames = 0.
     self.standstill_req = False
     self.permit_braking = True
+    self._standstill_req = False
+    self.lead = False
+    self.left_lane = False
+    self.right_lane = False
     self.steer_rate_counter = 0
+    self.prohibit_neg_calculation = True
     self.distance_button = 0
 
     # *** start long control state ***
@@ -180,26 +192,85 @@ class CarController(CarControllerBase):
 
     # *** gas and brake ***
 
-    # on entering standstill, send standstill request
-    if CS.out.standstill and not self.last_standstill and (self.CP.carFingerprint not in NO_STOP_TIMER_CAR):
-      self.standstill_req = True
-    if CS.pcm_acc_status != 8:
-      # pcm entered standstill or it's disabled
-      self.standstill_req = False
-
-    self.last_standstill = CS.out.standstill
+    # *** standstill logic ***
+    # mimic stock behaviour, set standstill_req to False only when openpilot wants to resume
+    if not CC.cruiseControl.resume:
+        self.resume_off_frames += 1  # frame counter for hysteresis
+        # add a 1.5 second hysteresis to when CC.cruiseControl.resume turns off in order to prevent
+        # vehicle's dash from blinking
+        if self.resume_off_frames >= UI_HYSTERESIS_TIME / DT_CTRL:
+            self._standstill_req = True
+    else:
+        self.resume_off_frames = 0
+        self._standstill_req = False
+    # ignore standstill on NO_STOP_TIMER_CAR
+    self.standstill_req = actuators.longControlState == LongCtrlState.stopping and self._standstill_req \
+                          and self.CP.carFingerprint not in NO_STOP_TIMER_CAR
 
     # handle UI messages
     fcw_alert = hud_control.visualAlert == VisualAlert.fcw
-    steer_alert = hud_control.visualAlert in (VisualAlert.steerRequired, VisualAlert.ldw)
-    lead = hud_control.leadVisible or CS.out.vEgo < 12.  # at low speed we always assume the lead is present so ACC can be engaged
+    steer_alert = hud_control.visualAlert == VisualAlert.steerRequired and not hud_control.enableVehicleBuzzer
+    alert_prompt = hud_control.audibleAlert in (AudibleAlert.promptDistracted, AudibleAlert.prompt) and hud_control.enableVehicleBuzzer
+    alert_prompt_repeat = hud_control.audibleAlert in (AudibleAlert.promptRepeat, AudibleAlert.warningSoft) and hud_control.enableVehicleBuzzer
+    alert_immediate = hud_control.audibleAlert == AudibleAlert.warningImmediate and hud_control.enableVehicleBuzzer
+    cancel_chime = pcm_cancel_cmd and not hud_control.enableVehicleBuzzer
+
+    # *** ui hysteresis ***
+    if self.frame % (UI_HYSTERESIS_TIME / DT_CTRL) == 0:
+      self.lead = hud_control.leadVisible
+      self.left_lane = hud_control.leftLaneVisible
+      self.right_lane = hud_control.rightLaneVisible
+
+#    # For cars where we allow a higher max acceleration of 2.0 m/s^2, compensate for PCM request overshoot and imprecise braking
+#    # TODO: sometimes when switching from brake to gas quickly, CLUTCH->ACCEL_NET shows a slow unwind. make it go to 0 immediately
+#    if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
+#      if CC.longActive and not CS.out.cruiseState.standstill:
+#        # calculate amount of acceleration PCM should apply to reach target, given pitch
+#        accel_due_to_pitch = math.sin(CS.slope_angle) * ACCELERATION_DUE_TO_GRAVITY
+#        net_acceleration_request = actuators.accel + accel_due_to_pitch
+
+#        # let PCM handle stopping for now
+#        pcm_accel_compensation = 0.0
+#        if actuators.longControlState != LongCtrlState.stopping:
+#          pcm_accel_compensation = 2.0 * (CS.pcm_accel_net - net_acceleration_request)
+
+#        # prevent compensation windup
+#        pcm_accel_compensation = clip(pcm_accel_compensation, actuators.accel - self.params.ACCEL_MAX,
+#                                      actuators.accel - self.params.ACCEL_MIN)
+
+#        self.pcm_accel_compensation = rate_limit(pcm_accel_compensation, self.pcm_accel_compensation, -0.01, 0.01)
+#        pcm_accel_cmd = actuators.accel - self.pcm_accel_compensation
+
+#        # Along with rate limiting positive jerk below, this greatly improves gas response time
+#        # Consider the net acceleration request that the PCM should be applying (pitch included)
+#        if net_acceleration_request < 0.1:
+#          self.permit_braking = True
+#        elif net_acceleration_request > 0.2:
+#          self.permit_braking = False
+#      else:
+#        self.pcm_accel_compensation = 0.0
+#        pcm_accel_cmd = actuators.accel
+#        self.permit_braking = True
+#    else:
+#      self.permit_braking = True
+#      # Set thresholds for compensatory force calculations
+#      comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
+#      if not CC.longActive:
+#        self.prohibit_neg_calculation = True
+#      if CS.pcm_accel_net > comp_thresh:
+#        self.prohibit_neg_calculation = False
+#      # Calculate acceleration offset only when allowed
+#      self.pcm_accel_compensation = CS.pcm_accel_net if CC.longActive and not self.prohibit_neg_calculation else 0.0
+#      # Compute PCM acceleration command only if long control is active
+#      pcm_accel_cmd = clip(actuators.accel + self.pcm_accel_compensation, self.params.ACCEL_MIN, self.params.ACCEL_MAX) if CC.longActive and not \
+#         CS.out.cruiseState.standstill else 0.0
 
     if self.CP.openpilotLongitudinalControl:
       if self.frame % 3 == 0:
         # Press distance button until we are at the correct bar length. Only change while enabled to avoid skipping startup popup
         if self.frame % 6 == 0 and self.CP.openpilotLongitudinalControl:
           desired_distance = 4 - hud_control.leadDistanceBars
-          if CS.out.cruiseState.enabled and CS.pcm_follow_distance != desired_distance:
+          if CS.pcm_follow_distance != desired_distance:
             self.distance_button = not self.distance_button
           else:
             self.distance_button = 0
@@ -264,26 +335,16 @@ class CarController(CarControllerBase):
           can_sends.append(toyotacan.create_accel_command(self.packer, 0, pcm_cancel_cmd, True, False, lead, CS.acc_type, False, self.distance_button))
 
     # *** hud ui ***
-    if self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:
-      # ui mesg is at 1Hz but we send asap if:
-      # - there is something to display
-      # - there is something to stop displaying
-      send_ui = False
-      if ((fcw_alert or steer_alert) and not self.alert_active) or \
-         (not (fcw_alert or steer_alert) and self.alert_active):
-        send_ui = True
-        self.alert_active = not self.alert_active
-      elif pcm_cancel_cmd:
-        # forcing the pcm to disengage causes a bad fault sound so play a good sound instead
-        send_ui = True
+    # usually this is sent at a much lower rate, but no adverse effects has been observed when sent at a much higher rate
+    # doing so simplifies carcontroller logic and allows faster response from the vehicle's combination meter
+    if self.frame % 3 == 0 and self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:
+      can_sends.append(toyotacan.create_ui_command(self.packer, steer_alert, cancel_chime, self.left_lane,
+                                                   self.right_lane, CC.enabled, CS.lkas_hud, CS.lda_left_lane,
+                                                   CS.lda_right_lane, CS.sws_beeps, CS.lda_sa_toggle, alert_prompt,
+                                                   alert_prompt_repeat, alert_immediate))
 
-      if self.frame % 20 == 0 or send_ui:
-        can_sends.append(toyotacan.create_ui_command(self.packer, steer_alert, pcm_cancel_cmd, hud_control.leftLaneVisible,
-                                                     hud_control.rightLaneVisible, hud_control.leftLaneDepart,
-                                                     hud_control.rightLaneDepart, CC.enabled, CS.lkas_hud))
-
-      if (self.frame % 100 == 0 or send_ui) and (self.CP.enableDsu or self.CP.flags & ToyotaFlags.DISABLE_RADAR.value):
-        can_sends.append(toyotacan.create_fcw_command(self.packer, fcw_alert))
+    if self.CP.enableDsu or self.CP.flags & ToyotaFlags.DISABLE_RADAR.value:
+      can_sends.append(toyotacan.create_fcw_command(self.packer, fcw_alert))
 
     # *** static msgs ***
     for addr, cars, bus, fr_step, vl in STATIC_DSU_MSGS:

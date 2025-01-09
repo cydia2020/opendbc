@@ -43,9 +43,18 @@ class CarInterface(CarInterfaceBase):
 
     stop_and_go = candidate in TSS2_CAR
 
+    # Detect 0x23, the CAN ID used by ZSS
+    if 0x23 in fingerprint[0]:
+      ret.flags |= ToyotaFlags.SECONDARY_STEER_ANGLE.value
+
+    # Detect 0x343 on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
+    if 0x343 in fingerprint[2] and candidate not in TSS2_CAR:
+      ret.flags |= ToyotaFlags.DSU_BYPASS.value
+
     # In TSS2 cars, the camera does long control
     found_ecus = [fw.ecu for fw in car_fw]
-    ret.enableDsu = len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR)
+    ret.enableDsu = len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR) \
+                    and not bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)
 
     if Ecu.hybrid in found_ecus:
       ret.flags |= ToyotaFlags.HYBRID.value
@@ -56,7 +65,8 @@ class CarInterface(CarInterfaceBase):
       for fw in car_fw:
         if fw.ecu == "eps" and not fw.fwVersion == b'8965B47060\x00\x00\x00\x00\x00\x00':
           ret.steerActuatorDelay = 0.25
-          CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning, steering_angle_deadzone_deg=0.2)
+          CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning, \
+                                                 steering_angle_deadzone_deg=0.0 if 0x23 in fingerprint[0] else 0.2)
 
     elif candidate in (CAR.LEXUS_RX, CAR.LEXUS_RX_TSS2):
       stop_and_go = True
@@ -91,7 +101,7 @@ class CarInterface(CarInterfaceBase):
     # TODO: these models can do stop and go, but unclear if it requires sDSU or unplugging DSU.
     #  For now, don't list stop and go functionality in the docs
     if ret.flags & ToyotaFlags.SNG_WITHOUT_DSU:
-      stop_and_go = stop_and_go or (ret.enableDsu and not docs)
+      stop_and_go = (ret.enableDsu or bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)) and not docs
 
     ret.centerToFront = ret.wheelbase * 0.44
 
@@ -111,8 +121,14 @@ class CarInterface(CarInterfaceBase):
       if experimental_long and candidate in RADAR_ACC_CAR:
         ret.flags |= ToyotaFlags.DISABLE_RADAR.value
 
+      # Disabling radar is only supported on TSS2 radar-ACC cars
+      if experimental_long and candidate in RADAR_ACC_CAR:
+        ret.flags |= ToyotaFlags.DISABLE_RADAR.value
+
     # openpilot longitudinal enabled by default:
+    #  - non-(TSS2 radar ACC cars) w/ smartDSU installed
     #  - cars w/ DSU disconnected
+    #  - cars w/ DSU rerouted to the camera harness
     #  - TSS2 cars with camera sending ACC_CONTROL where we can block it
     # openpilot longitudinal behind experimental long toggle:
     #  - TSS2 radar ACC cars (disables radar)
@@ -122,7 +138,8 @@ class CarInterface(CarInterfaceBase):
     else:
       ret.openpilotLongitudinalControl = ret.enableDsu or \
         candidate in (TSS2_CAR - RADAR_ACC_CAR) or \
-        bool(ret.flags & ToyotaFlags.DISABLE_RADAR.value)
+        bool(ret.flags & ToyotaFlags.DISABLE_RADAR.value) or \
+        bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)
 
     ret.autoResumeSng = ret.openpilotLongitudinalControl and candidate in NO_STOP_TIMER_CAR
 

@@ -103,46 +103,42 @@ def create_fcw_command(packer, fcw):
   return packer.make_can_msg("PCS_HUD", 0, values)
 
 
-def create_ui_command(packer, steer, chime, left_line, right_line, left_lane_depart, right_lane_depart, enabled, stock_lkas_hud):
+def create_ui_command(packer, steer, chime, left_line, right_line, enabled, stock_lkas_hud,
+                      lda_left_lane, lda_right_lane, sws_beeps, lda_sa_toggle, alert_prompt,
+                      alert_prompt_repeat, alert_immediate):
   values = {
-    "TWO_BEEPS": chime,
-    "LDA_ALERT": steer,
-    "RIGHT_LINE": 3 if right_lane_depart else 1 if right_line else 2,
-    "LEFT_LINE": 3 if left_lane_depart else 1 if left_line else 2,
+    "TWO_BEEPS": chime or sws_beeps or alert_prompt,
+    "LDA_ALERT":  3 if alert_immediate else 2 if alert_prompt_repeat else 1 if alert_prompt or steer else 0,
+    "RIGHT_LINE": 3 if lda_right_lane else 1 if right_line else 2,
+    "LEFT_LINE": 3 if lda_left_lane else 1 if left_line else 2,
     "BARRIERS": 1 if enabled else 0,
-
-    # static signals
-    "SET_ME_X02": 2,
-    "SET_ME_X01": 1,
-    "LKAS_STATUS": 1,
-    "REPEATED_BEEPS": 0,
-    "LANE_SWAY_FLD": 7,
-    "LANE_SWAY_BUZZER": 0,
-    "LANE_SWAY_WARNING": 0,
-    "LDA_FRONT_CAMERA_BLOCKED": 0,
-    "TAKE_CONTROL": 0,
-    "LANE_SWAY_SENSITIVITY": 2,
-    "LANE_SWAY_TOGGLE": 1,
-    "LDA_ON_MESSAGE": 0,
-    "LDA_MESSAGES": 0,
-    "LDA_SA_TOGGLE": 1,
-    "LDA_SENSITIVITY": 2,
-    "LDA_UNAVAILABLE": 0,
-    "LDA_MALFUNCTION": 0,
-    "LDA_UNAVAILABLE_QUIET": 0,
-    "ADJUSTING_CAMERA": 0,
-    "LDW_EXIST": 1,
+    "LDA_SA_TOGGLE": lda_sa_toggle,
+    "REPEATED_BEEPS": 1 if alert_prompt_repeat or lda_right_lane or lda_left_lane else 0,
   }
 
   # lane sway functionality
   # not all cars have LKAS_HUD — update with camera values if available
   if len(stock_lkas_hud):
     values.update({s: stock_lkas_hud[s] for s in [
+      # keep stock SWS
       "LANE_SWAY_FLD",
       "LANE_SWAY_BUZZER",
       "LANE_SWAY_WARNING",
       "LANE_SWAY_SENSITIVITY",
       "LANE_SWAY_TOGGLE",
+      # keep stock LDA
+      "LDW_EXIST",
+      "ADJUSTING_CAMERA",
+      "LDA_MALFUNCTION",
+      "LDA_SENSITIVITY",
+      "LDA_MESSAGES",
+      "LDA_ON_MESSAGE",
+      "TAKE_CONTROL",
+      "LDA_FRONT_CAMERA_BLOCKED",
+      "LKAS_STATUS",
+      # keep these as well just in case
+      "SET_ME_X01",
+      "SET_ME_X02",
     ]})
 
   return packer.make_can_msg("LKAS_HUD", 0, values)
