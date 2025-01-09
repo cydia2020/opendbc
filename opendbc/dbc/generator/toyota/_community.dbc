@@ -27,7 +27,9 @@ BO_ 513 GAS_SENSOR: 6 INTERCEPTOR
 VAL_ 513 STATE 5 "FAULT_TIMEOUT" 4 "FAULT_STARTUP" 3 "FAULT_SCE" 2 "FAULT_SEND" 1 "FAULT_BAD_CHECKSUM" 0 "NO_FAULT" ;
 
 BO_ 35 SECONDARY_STEER_ANGLE: 8 XXX
- SG_ STEER_ANGLE : 7|24@0- (0.004901594652,0) [-500|500] "" XXX
+ SG_ STEER_ANGLE : 7|32@0- (0.00485601697,0) [0|500] "" XXX
+ SG_ STEER_RATE : 32|24@1- (0.00485601697,0) [0|16777215] "" XXX
+ SG_ CHECKSUM : 63|8@0+ (1,0) [0|255] "" XXX
 
 CM_ "BO_ SECONDARY_STEER_ANGLE: ZSS is a high-precision steering angle sensor that can replace the lower resolution sensor in most TSS1 Toyotas. Learn more: https://github.com/commaai/openpilot/wiki/Toyota-Lexus#zorro-steering-sensor-zss";
 
