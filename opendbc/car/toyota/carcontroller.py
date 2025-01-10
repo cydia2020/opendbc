@@ -51,7 +51,7 @@ def get_long_tune(CP, params):
   if CP.carFingerprint in TSS2_CAR:
     kiV = [0.25]
     kdV = [0.25 / 4]
-  if CP.carFingerprint == CAR.TOYOTA_PRIUS:
+  elif CP.carFingerprint == CAR.TOYOTA_PRIUS:
     kiBP = [0., 5.]
     kiV = [0.8, 1.2]
   else:
@@ -235,8 +235,33 @@ class CarController(CarControllerBase):
             self.distance_button = 0
 
 
-        if self.CP.carFingerprint == CAR.TOYOTA_PRIUS:
-          self.permit_braking = True
+        if self.CP.flags & ToyotaFlags.HYBRID.value:
+          pcm_accel_cmd = actuators.accel
+
+          # wind down integral when approaching target for step changes and smooth ramps to reduce overshoot
+          prev_aego = self.aego.x
+          self.aego.update(CS.out.aEgo)
+          j_ego = (self.aego.x - prev_aego) / (DT_CTRL * 3)
+          a_ego_future = CS.out.aEgo + j_ego * 0.5
+
+          if actuators.longControlState == LongCtrlState.pid:
+            error = pcm_accel_cmd - CS.out.aEgo
+            self.error_rate.update((error - self.prev_error) / (DT_CTRL * 3))
+            self.prev_error = error
+
+            error_future = pcm_accel_cmd - a_ego_future
+            pcm_accel_cmd = self.long_pid.update(error_future, error_rate=self.error_rate.x,
+                                               speed=CS.out.vEgo,
+                                               feedforward=pcm_accel_cmd)
+          else:
+            self.long_pid.reset()
+            self.error_rate.x = 0.0
+            self.prev_error = 0.0
+
+          if actuators.accel < 0.2 or stopping:
+            self.permit_braking = True
+          elif actuators.accel > 0.3 or not CC.longActive:
+            self.permit_braking = False
           # Set thresholds for compensatory force calculations
           comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
           if not CC.longActive:
