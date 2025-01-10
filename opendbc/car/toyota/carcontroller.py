@@ -224,9 +224,6 @@ class CarController(CarControllerBase):
       self.right_lane = hud_control.rightLaneVisible
 
 
-#    else:
-
-
     if self.CP.openpilotLongitudinalControl:
       if self.frame % 3 == 0:
         # Press distance button until we are at the correct bar length. Only change while enabled to avoid skipping startup popup
