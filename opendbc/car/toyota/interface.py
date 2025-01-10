@@ -150,6 +150,12 @@ class CarInterface(CarInterfaceBase):
     # to a negative value, so it won't matter.
     ret.minEnableSpeed = -1. if stop_and_go else MIN_ACC_SPEED
 
+    if candidate == CAR.TOYOTA_PRIUS:
+      ret.longitudinalTuning.kiBP = [0., 5.]
+      ret.longitudinalTuning.kiV = [0.8, 1.2]
+      ret.stoppingDecelRate = 0.24  # reach stopping target smoothly
+      ret.longitudinalActuatorDelay = 0.05
+
     if candidate in TSS2_CAR:
       ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value
 
