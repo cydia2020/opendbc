@@ -40,10 +40,11 @@ def create_lta_steer_command_2(packer, frame):
   return packer.make_can_msg("STEERING_LTA_2", 0, values)
 
 
-def create_accel_command(packer, accel, pcm_cancel, permit_braking, standstill_req, lead, acc_type, fcw_alert, distance):
+def create_accel_command(packer, accel, accel_net, pcm_cancel, permit_braking, standstill_req, lead, acc_type, fcw_alert, distance):
   # TODO: find the exact canceling bit that does not create a chime
   values = {
     "ACCEL_CMD": accel,
+    "ACCEL_CMD_ALT": accel_net,
     "ACC_TYPE": acc_type,
     "DISTANCE": distance,
     "MINI_CAR": lead,
