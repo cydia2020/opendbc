@@ -115,7 +115,7 @@ class CarState(CarStateBase):
       acc_angle_deg = secondary_angle_deg if self.CP.flags & ToyotaFlags.SECONDARY_STEER_ANGLE else torque_sensor_angle_deg
       # Offset seems to be invalid for large steering angles and high angle rates
       if abs(ret.steeringAngleDeg) < 90 and abs(ret.steeringRateDeg) < 100 and cp.can_valid:
-        self.angle_offset.update(torque_sensor_angle_deg - ret.steeringAngleDeg)
+        self.angle_offset.update(acc_angle_deg - ret.steeringAngleDeg)
 
       if self.angle_offset.initialized:
         ret.steeringAngleOffsetDeg = self.angle_offset.x

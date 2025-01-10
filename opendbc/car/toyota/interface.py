@@ -44,8 +44,8 @@ class CarInterface(CarInterfaceBase):
     stop_and_go = candidate in TSS2_CAR
 
     # Detect 0x23, the CAN ID used by ZSS
-#    if 0x23 in fingerprint[0]:
-#      ret.flags |= ToyotaFlags.SECONDARY_STEER_ANGLE.value
+    if 0x23 in fingerprint[0]:
+      ret.flags |= ToyotaFlags.SECONDARY_STEER_ANGLE.value
 
     # Detect 0x343 on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
     if 0x343 in fingerprint[2] and candidate not in TSS2_CAR:
