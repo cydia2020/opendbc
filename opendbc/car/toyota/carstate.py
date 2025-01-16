@@ -243,8 +243,6 @@ class CarState(CarStateBase):
 
     if CP.carFingerprint in UNSUPPORTED_DSU_CAR and not CP.flags & ToyotaFlags.DISABLE_RADAR.value:
       pt_messages.append(("DSU_CRUISE", 5))
-    elif CP.carFingerprint in UNSUPPORTED_DSU_CAR and CP.flags & ToyotaFlags.DISABLE_RADAR.value:
-      cam_messages.append(("DSU_CRUISE", 5))
     else:
       pt_messages.append(("PCM_CRUISE_2", 33))
 
@@ -284,6 +282,12 @@ class CarState(CarStateBase):
         cam_messages += [
           ("PRE_COLLISION", 33),
         ]
+
+    if CP.carFingerprint in UNSUPPORTED_DSU_CAR and CP.flags & ToyotaFlags.DSU_BYPASS.value:
+      cam_messages += [
+        ("DSU_CRUISE", 5),
+        ("PRE_COLLISION", 33),
+      ]
 
     return {
       Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], pt_messages, 0),
