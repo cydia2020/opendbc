@@ -1,9 +1,9 @@
 import math
+import numpy as np
 from opendbc.car import Bus, carlog, apply_meas_steer_torque_limits, apply_std_steer_angle_limits, common_fault_avoidance, \
                         make_tester_present_msg, rate_limit, structs, ACCELERATION_DUE_TO_GRAVITY, DT_CTRL
 from opendbc.car.can_definitions import CanData
 from opendbc.car.common.filter_simple import FirstOrderFilter
-from opendbc.car.common.numpy_fast import clip, interp
 from opendbc.car.common.pid import PIDController
 from opendbc.car.secoc import add_mac, build_sync_mac
 from opendbc.car.interfaces import CarControllerBase
@@ -46,16 +46,13 @@ UI_HYSTERESIS_TIME = 1.  # seconds
 
 def get_long_tune(CP, params):
   kiBP = [0.]
-  kdBP = [0.]
-  kdV = [0.]
   if CP.carFingerprint in TSS2_CAR:
     kiV = [0.25]
-    kdV = [0.25 / 4]
   else:
     kiBP = [0., 5., 35.]
     kiV = [3.6, 2.4, 1.5]
 
-  return PIDController(0.0, (kiBP, kiV), k_f=1.0, k_d=(kdBP, kdV),
+  return PIDController(0.0, (kiBP, kiV), k_f=1.0,
                        pos_limit=params.ACCEL_MAX, neg_limit=params.ACCEL_MIN,
                        rate=1 / (DT_CTRL * 3))
 
@@ -80,12 +77,7 @@ class CarController(CarControllerBase):
 
     # *** start long control state ***
     self.long_pid = get_long_tune(self.CP, self.params)
-
-    self.error_rate = FirstOrderFilter(0.0, 0.5, DT_CTRL * 3)
-    self.prev_error = 0.0
-
     self.aego = FirstOrderFilter(0.0, 0.25, DT_CTRL * 3)
-
     self.pitch = FirstOrderFilter(0, 0.5, DT_CTRL)
 
     self.accel = 0
@@ -148,7 +140,7 @@ class CarController(CarControllerBase):
         if not lat_active:
           apply_angle = CS.out.steeringAngleDeg + CS.out.steeringAngleOffsetDeg
 
-        self.last_angle = clip(apply_angle, -MAX_LTA_ANGLE, MAX_LTA_ANGLE)
+        self.last_angle = float(np.clip(apply_angle, -MAX_LTA_ANGLE, MAX_LTA_ANGLE))
 
     self.last_steer = apply_steer
 
@@ -235,7 +227,7 @@ class CarController(CarControllerBase):
         if self.CP.carFingerprint == CAR.TOYOTA_PRIUS:
           self.permit_braking = True
           # Set thresholds for compensatory force calculations
-          comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
+          comp_thresh = np.interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
           if not CC.longActive:
             self.prohibit_neg_calculation = True
           if CS.pcm_accel_net > comp_thresh:
@@ -243,7 +235,7 @@ class CarController(CarControllerBase):
           # Calculate acceleration offset only when allowed
           self.pcm_accel_compensation = CS.pcm_accel_net if CC.longActive and not self.prohibit_neg_calculation else 0.0
           # Compute PCM acceleration command only if long control is active
-          pcm_accel_cmd = clip(actuators.accel + self.pcm_accel_compensation, self.params.ACCEL_MIN, self.params.ACCEL_MAX) if CC.longActive and not \
+          pcm_accel_cmd = float(np.clip(actuators.accel + self.pcm_accel_compensation, self.params.ACCEL_MIN, self.params.ACCEL_MAX)) if CC.longActive and not \
              CS.out.cruiseState.standstill else 0.0
         else:
           # internal PCM gas command can get stuck unwinding from negative accel so we apply a generous rate limit
@@ -259,7 +251,7 @@ class CarController(CarControllerBase):
 
           # GVC does not overshoot ego acceleration when starting from stop, but still has a similar delay
           if not self.CP.flags & ToyotaFlags.SECOC.value:
-            a_ego_blended = interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo])
+            a_ego_blended = np.interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo])
           else:
             a_ego_blended = CS.out.aEgo
 
@@ -270,12 +262,8 @@ class CarController(CarControllerBase):
           a_ego_future = a_ego_blended + j_ego * 0.5
 
           if actuators.longControlState == LongCtrlState.pid:
-            error = pcm_accel_cmd - a_ego_blended
-            self.error_rate.update((error - self.prev_error) / (DT_CTRL * 3))
-            self.prev_error = error
-
             error_future = pcm_accel_cmd - a_ego_future
-            pcm_accel_cmd = self.long_pid.update(error_future, error_rate=self.error_rate.x,
+            pcm_accel_cmd = self.long_pid.update(error_future,
                                                speed=CS.out.vEgo,
                                                feedforward=pcm_accel_cmd)
           else:
@@ -291,7 +279,7 @@ class CarController(CarControllerBase):
           elif net_acceleration_request_min > 0.3:
             self.permit_braking = False
 
-          pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+          pcm_accel_cmd = float(np.clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX))
 
         can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, actuators.accel, pcm_cancel_cmd, self.permit_braking, self.standstill_req, self.lead or CS.out.vEgo < 12.,
                                                         CS.acc_type, fcw_alert, self.distance_button))
@@ -329,7 +317,7 @@ class CarController(CarControllerBase):
     new_actuators = actuators.as_builder()
     new_actuators.steer = apply_steer / self.params.STEER_MAX
     new_actuators.steerOutputCan = apply_steer
-    new_actuators.steeringAngleDeg = self.last_angle
+    new_actuators.steeringAngleDeg = float(self.last_angle)
     new_actuators.accel = self.accel
 
     self.frame += 1
