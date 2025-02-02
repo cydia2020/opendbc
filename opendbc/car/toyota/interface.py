@@ -15,7 +15,7 @@ class CarInterface(CarInterfaceBase):
 
   @staticmethod
   def _get_params(ret: structs.CarParams, candidate, fingerprint, car_fw, experimental_long, docs) -> structs.CarParams:
-    ret.carName = "toyota"
+    ret.brand = "toyota"
     ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.toyota)]
     ret.safetyConfigs[0].safetyParam = EPS_SCALE[candidate]
 
@@ -76,8 +76,7 @@ class CarInterface(CarInterfaceBase):
       # https://engage.toyota.com/static/images/toyota_safety_sense/TSS_Applicability_Chart.pdf
       stop_and_go = candidate != CAR.TOYOTA_AVALON
 
-    elif candidate in (CAR.TOYOTA_RAV4_TSS2, CAR.TOYOTA_RAV4_TSS2_2022, CAR.TOYOTA_RAV4_TSS2_2023, CAR.TOYOTA_RAV4_PRIME,\
-                       CAR.TOYOTA_SIENNA_4TH_GEN, CAR.TOYOTA_YARIS):
+    elif candidate in (CAR.TOYOTA_RAV4_TSS2, CAR.TOYOTA_RAV4_TSS2_2022, CAR.TOYOTA_RAV4_TSS2_2023, CAR.TOYOTA_RAV4_PRIME, CAR.TOYOTA_SIENNA_4TH_GEN):
       ret.lateralTuning.init('pid')
       ret.lateralTuning.pid.kiBP = [0.0]
       ret.lateralTuning.pid.kpBP = [0.0]
@@ -151,8 +150,8 @@ class CarInterface(CarInterfaceBase):
     ret.minEnableSpeed = -1. if stop_and_go else MIN_ACC_SPEED
 
     if candidate == CAR.TOYOTA_PRIUS:
-      ret.longitudinalTuning.kiBP = [0., 5., 15]
-      ret.longitudinalTuning.kiV = [0.8, 2., 1.2]
+      ret.longitudinalTuning.kiBP = [0., 5., 15, 25]
+      ret.longitudinalTuning.kiV = [0.8, 2., 1., 1.2]
       ret.stoppingDecelRate = 0.24  # reach stopping target smoothly
       ret.longitudinalActuatorDelay = 0.05
 
