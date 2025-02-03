@@ -43,7 +43,7 @@ COMPENSATORY_CALCULATION_THRESHOLD_V = [-0.2, -0.2, -0.05]  # m/s^2
 COMPENSATORY_CALCULATION_THRESHOLD_BP = [0., 20., 32.]  # m/s
 
 # resume, lead, and lane lines hysteresis
-UI_HYSTERESIS_TIME = 1.  # seconds
+UI_HYSTERESIS_TIME = 3.  # seconds
 
 def get_long_tune(CP, params):
   if CP.carFingerprint in TSS2_CAR:
@@ -237,10 +237,7 @@ class CarController(CarControllerBase):
           # Compute PCM acceleration command only if long control is active
           pcm_accel_cmd = float(np.clip(actuators.accel + self.pcm_accel_compensation, self.params.ACCEL_MIN, self.params.ACCEL_MAX)) if CC.longActive and not \
              CS.out.cruiseState.standstill else 0.0
-          if actuators.accel < 0.2 or stopping:
-            self.permit_braking = True
-          elif actuators.accel > 0.3 or not CC.longActive:
-            self.permit_braking = False
+          self.permit_braking = CC.longActive
         else:
           # internal PCM gas command can get stuck unwinding from negative accel so we apply a generous rate limit
           pcm_accel_cmd = actuators.accel
