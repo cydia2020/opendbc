@@ -69,7 +69,6 @@ class CarController(CarControllerBase):
     self.last_angle = 0
     self.alert_active = False
     self.resume_off_frames = 0.
-    self.standstill_off_frames = 0.
     self.long_active_frames = 0.
     self.standstill_req = False
     self.permit_braking = True
@@ -190,13 +189,8 @@ class CarController(CarControllerBase):
     # *** gas and brake ***
 
     # *** standstill logic ***
-    # do not set standstill for 3 seconds after resuming, reset when re-entering standstill
-    if not CS.out.cruiseState.standstill:
-      self.standstill_off_frames += 1
-    else:
-      self.standstill_off_frames = 0
     # do not immediately resume after enabling, wait 1 second
-    if CS.out.cruiseState.enabled:
+    if CS.out.cruiseState.enabled :
       self.long_active_frames += 1
     else:
       self.long_active_frames = 0
@@ -211,8 +205,12 @@ class CarController(CarControllerBase):
         self.resume_off_frames = 0
         self._standstill_req = False
     # ignore standstill on NO_STOP_TIMER_CAR
-    self.standstill_req = self.standstill_off_frames > RESUME_HYSTERESIS_TIME / DT_CTRL and actuators.longControlState == LongCtrlState.stopping and self._standstill_req \
-                          and self.CP.carFingerprint not in NO_STOP_TIMER_CAR and not CS.out.brakePressed and self.long_active_frames > UI_HYSTERESIS_TIME / DT_CTRL
+    self.standstill_req = (actuators.longControlState == LongCtrlState.stopping \
+                          and self._standstill_req \
+                          and self.CP.carFingerprint not in NO_STOP_TIMER_CAR and \
+                          actuators.aacel < 1e-3) \
+                          or self.long_active_frames < UI_HYSTERESIS_TIME / DT_CTRL \
+                          or CS.out.brakePressed
 
     # handle UI messages
     fcw_alert = hud_control.visualAlert == VisualAlert.fcw
