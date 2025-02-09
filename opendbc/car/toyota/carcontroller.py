@@ -68,6 +68,7 @@ class CarController(CarControllerBase):
     self.alert_active = False
     self.resume_off_frames = 0.
     self.standstill_req = False
+    self.stop_timer = 0.
     self.permit_braking = True
     self._standstill_req = False
     self.lead = False
@@ -196,9 +197,14 @@ class CarController(CarControllerBase):
     else:
         self.resume_off_frames = 0
         self._standstill_req = False
+    if CS.out.vEgo < 1e-3:
+      self.stop_timer += 1
+    else:
+      self.stop_timer = 0
     # ignore standstill on NO_STOP_TIMER_CAR
-    self.standstill_req = actuators.longControlState == LongCtrlState.stopping and self._standstill_req \
-                          and self.CP.carFingerprint not in NO_STOP_TIMER_CAR
+    self.standstill_req = actuators.longControlState == LongCtrlState.stopping \
+                          and self._standstill_req \
+                          and self.stop_timer > 0.5 / DT_CTRL
 
     # handle UI messages
     fcw_alert = hud_control.visualAlert == VisualAlert.fcw
@@ -288,7 +294,7 @@ class CarController(CarControllerBase):
 
           pcm_accel_cmd = float(np.clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX))
 
-        can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, actuators.accel, pcm_cancel_cmd, self.permit_braking, self.standstill_req, self.lead or CS.out.vEgo < 12.,
+        can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, actuators.accel, pcm_cancel_cmd, self.permit_braking, self.standstill_req and self.CP.carFingerprint not in NO_STOP_TIMER_CAR, self.lead or CS.out.vEgo < 12.,
                                                         CS.acc_type, fcw_alert, self.distance_button))
         self.accel = pcm_accel_cmd
 
