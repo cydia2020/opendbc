@@ -196,7 +196,7 @@ class CarController(CarControllerBase):
     # ignore standstill on NO_STOP_TIMER_CAR
     self.standstill_req = actuators.longControlState == LongCtrlState.stopping \
                           and self._standstill_req \
-                          and self.stop_timer > 0.5 / DT_CTRL
+                          and self.stop_timer > 0.1 / DT_CTRL
 
     # handle UI messages
     fcw_alert = hud_control.visualAlert == VisualAlert.fcw
