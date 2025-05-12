@@ -13,8 +13,8 @@ class CarInterface(CarInterfaceBase):
   RadarInterface = RadarInterface
 
   @staticmethod
-  def _get_params(ret: structs.CarParams, candidate, fingerprint, car_fw, experimental_long, docs) -> structs.CarParams:
-    ret.carName = "chrysler"
+  def _get_params(ret: structs.CarParams, candidate, fingerprint, car_fw, alpha_long, docs) -> structs.CarParams:
+    ret.brand = "chrysler"
     ret.dashcamOnly = True
 
     # radar parsing needs some work, see https://github.com/commaai/openpilot/issues/26842

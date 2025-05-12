@@ -26,8 +26,8 @@ class CarInterface(CarInterfaceBase):
     return CarControllerParams.ACCEL_MIN, np.interp(current_speed, ACCEL_MAX_BP, ACCEL_MAX_VALS)
 
   @staticmethod
-  def _get_params(ret: structs.CarParams, candidate, fingerprint, car_fw, experimental_long, docs) -> structs.CarParams:
-    ret.carName = "ford"
+  def _get_params(ret: structs.CarParams, candidate, fingerprint, car_fw, alpha_long, docs) -> structs.CarParams:
+    ret.brand = "ford"
     ret.dashcamOnly = True
 
     ret.radarUnavailable = Bus.radar not in DBC[candidate]
@@ -50,8 +50,8 @@ class CarInterface(CarInterfaceBase):
       cfgs.insert(0, get_safety_config(structs.CarParams.SafetyModel.noOutput))
     ret.safetyConfigs = cfgs
 
-    ret.experimentalLongitudinalAvailable = ret.radarUnavailable
-    if experimental_long or not ret.radarUnavailable:
+    ret.alphaLongitudinalAvailable = ret.radarUnavailable
+    if alpha_long or not ret.radarUnavailable:
       ret.safetyConfigs[-1].safetyParam |= FordSafetyFlags.LONG_CONTROL.value
       ret.openpilotLongitudinalControl = True
 
