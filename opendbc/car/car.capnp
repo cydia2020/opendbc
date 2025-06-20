@@ -240,7 +240,7 @@ struct CarState {
   # process meta
   cumLagMs @50 :Float32;
   # combination meter dimmer states
-  meterBrightness @60 :Float32;
+  meterBrightness @61 :Float32;
 
   struct WheelSpeeds {
     # optional wheel speeds
