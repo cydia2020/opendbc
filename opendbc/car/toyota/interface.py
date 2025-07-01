@@ -128,10 +128,6 @@ class CarInterface(CarInterfaceBase):
       if alpha_long and candidate in RADAR_ACC_CAR:
         ret.flags |= ToyotaFlags.DISABLE_RADAR.value
 
-      # Disabling radar is only supported on TSS2 radar-ACC cars
-      if experimental_long and candidate in RADAR_ACC_CAR:
-        ret.flags |= ToyotaFlags.DISABLE_RADAR.value
-
     # openpilot longitudinal enabled by default:
     #  - non-(TSS2 radar ACC cars) w/ smartDSU installed
     #  - cars w/ DSU disconnected
@@ -160,8 +156,6 @@ class CarInterface(CarInterfaceBase):
     if candidate == CAR.TOYOTA_PRIUS:
       ret.longitudinalTuning.kiBP = [0., 5.]
       ret.longitudinalTuning.kiV = [1.4, 1.2]
-      ret.vEgoStopping = 0.25
-      ret.vEgoStarting = 0.25
   
     if candidate in TSS2_CAR:
       ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value
