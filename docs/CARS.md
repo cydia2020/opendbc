@@ -167,7 +167,7 @@
 |Kia|Niro EV 2022|All|[Dashcam mode](#dashcam)|
 |Kia|Niro EV (with HDA II) 2025|Highway Driving Assist II|[Dashcam mode](#dashcam)|
 |Kia|Niro EV (without HDA II) 2023-25|All|[Dashcam mode](#dashcam)|
-|Kia|Niro Hybrid 2018|All|[Dashcam mode](#dashcam)|
+|Kia|Niro Hybrid 2018|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
 |Kia|Niro Hybrid 2021|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
 |Kia|Niro Hybrid 2022|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
 |Kia|Niro Hybrid 2023|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
