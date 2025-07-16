@@ -154,7 +154,7 @@ class CarInterface(CarInterfaceBase):
     ret.minEnableSpeed = -1. if stop_and_go else MIN_ACC_SPEED
 
     if candidate == CAR.TOYOTA_PRIUS:
-      ret.longitudinalTuning.kiBP = [0., 5.]
+      ret.longitudinalTuning.kiBP = [0., 10.]
       ret.longitudinalTuning.kiV = [1.4, 1.2]
   
     if candidate in TSS2_CAR:
