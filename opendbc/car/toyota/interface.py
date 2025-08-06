@@ -51,11 +51,11 @@ class CarInterface(CarInterfaceBase):
     stop_and_go = candidate in TSS2_CAR
 
     # Detect 0x23, the CAN ID used by ZSS
-    if 0x23 in fingerprint[0]:
+    if any(msg in fingerprint[0] for msg in (0x23)):
       ret.flags |= ToyotaFlags.SECONDARY_STEER_ANGLE.value
 
     # Detect 0x343 on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
-    if 0x343 in fingerprint[2] and candidate not in TSS2_CAR:
+    if any(msg in fingerprint[2] for msg in (0x343)) and candidate not in TSS2_CAR:
       ret.flags |= ToyotaFlags.DSU_BYPASS.value
 
     # In TSS2 cars, the camera does long control
@@ -156,7 +156,7 @@ class CarInterface(CarInterfaceBase):
     if candidate == CAR.TOYOTA_PRIUS:
       ret.longitudinalTuning.kiBP = [0., 10.]
       ret.longitudinalTuning.kiV = [1.4, 1.2]
-  
+
     if candidate in TSS2_CAR:
       ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value
 
