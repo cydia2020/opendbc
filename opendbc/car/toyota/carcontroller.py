@@ -39,7 +39,7 @@ COMPENSATORY_CALCULATION_THRESHOLD_V = [-0.2, -0.2, -0.05]  # m/s^2
 COMPENSATORY_CALCULATION_THRESHOLD_BP = [0., 20., 32.]  # m/s
 
 # resume, lead, and lane lines hysteresis
-UI_HYSTERESIS_TIME = 3.  # seconds
+UI_HYSTERESIS_TIME = 1.  # seconds
 
 def get_long_tune(CP, params):
   if CP.carFingerprint in TSS2_CAR:
@@ -60,12 +60,7 @@ class CarController(CarControllerBase):
     self.params = CarControllerParams(self.CP)
     self.last_torque = 0
     self.last_angle = 0
-    self.alert_active = False
-    self.resume_off_frames = 0.
-    self.standstill_req = False
-    self.stop_timer = 0.
     self.permit_braking = True
-    self._standstill_req = False
     self.lead = False
     self.left_lane = False
     self.right_lane = False
@@ -177,26 +172,7 @@ class CarController(CarControllerBase):
         can_sends.append(lta_steer_2)
 
     # *** gas and brake ***
-
-    # *** standstill logic ***
-    # mimic stock behaviour, set standstill_req to False only when openpilot wants to resume
-    if not CC.cruiseControl.resume:
-        self.resume_off_frames += 1  # frame counter for hysteresis
-        # add a 1.5 second hysteresis to when CC.cruiseControl.resume turns off in order to prevent
-        # vehicle's dash from blinking
-        if self.resume_off_frames >= UI_HYSTERESIS_TIME / DT_CTRL:
-            self._standstill_req = True
-    else:
-        self.resume_off_frames = 0
-        self._standstill_req = False
-    if CS.out.vEgo < 1e-3:
-      self.stop_timer += 1
-    else:
-      self.stop_timer = 0
-    # ignore standstill on NO_STOP_TIMER_CAR
-    self.standstill_req = actuators.longControlState == LongCtrlState.stopping \
-                          and self._standstill_req \
-                          and self.stop_timer > 0.5 / DT_CTRL
+    self.standstill_req = not CC.cruiseControl.resume
 
     # handle UI messages
     fcw_alert = hud_control.visualAlert == VisualAlert.fcw
