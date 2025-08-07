@@ -16,61 +16,61 @@
 |Audi|Q2 2018|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
 |Audi|Q3 2019-24|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
 |Audi|Q5 2017-24|All|[Not compatible](#flexray)|
-|Audi|RS3 2018|Adaptive Cruise Control (ACC) & Lane Assist|[Upstream](#upstream)|
-|Audi|S3 2015-17|Adaptive Cruise Control (ACC) & Lane Assist|[Upstream](#upstream)|
-|Chevrolet|Bolt EUV 2022-23|Premier or Premier Redline Trim without Super Cruise Package|[Upstream](#upstream)|
-|Chevrolet|Bolt EV 2022-23|2LT Trim with Adaptive Cruise Control Package|[Upstream](#upstream)|
-|Chevrolet|Equinox 2019-22|Adaptive Cruise Control (ACC)|[Upstream](#upstream)|
-|Chevrolet|Silverado 1500 2020-21|Safety Package II|[Upstream](#upstream)|
-|Chevrolet|Trailblazer 2021-22|Adaptive Cruise Control (ACC)|[Upstream](#upstream)|
-|Chrysler|Pacifica 2017-18|Adaptive Cruise Control (ACC)|[Upstream](#upstream)|
-|Chrysler|Pacifica 2019-20|Adaptive Cruise Control (ACC)|[Upstream](#upstream)|
-|Chrysler|Pacifica 2021-23|All|[Upstream](#upstream)|
-|Chrysler|Pacifica Hybrid 2017-18|Adaptive Cruise Control (ACC)|[Upstream](#upstream)|
-|Chrysler|Pacifica Hybrid 2019-25|Adaptive Cruise Control (ACC)|[Upstream](#upstream)|
-|comma|body|All|[Upstream](#upstream)|
-|CUPRA|Ateca 2018-23|Adaptive Cruise Control (ACC) & Lane Assist|[Upstream](#upstream)|
-|Dodge|Durango 2020-21|Adaptive Cruise Control (ACC)|[Upstream](#upstream)|
-|Ford|Bronco Sport 2021-24|Co-Pilot360 Assist+|[Upstream](#upstream)|
-|Ford|Escape 2020-22|Co-Pilot360 Assist+|[Upstream](#upstream)|
-|Ford|Escape 2023-24|Co-Pilot360 Assist+|[Upstream](#upstream)|
-|Ford|Escape Hybrid 2020-22|Co-Pilot360 Assist+|[Upstream](#upstream)|
-|Ford|Escape Hybrid 2023-24|Co-Pilot360 Assist+|[Upstream](#upstream)|
-|Ford|Escape Plug-in Hybrid 2020-22|Co-Pilot360 Assist+|[Upstream](#upstream)|
-|Ford|Escape Plug-in Hybrid 2023-24|Co-Pilot360 Assist+|[Upstream](#upstream)|
-|Ford|Expedition 2022-24|Co-Pilot360 Assist 2.0|[Upstream](#upstream)|
-|Ford|Explorer 2020-24|Co-Pilot360 Assist+|[Upstream](#upstream)|
-|Ford|Explorer Hybrid 2020-24|Co-Pilot360 Assist+|[Upstream](#upstream)|
-|Ford|F-150 2021-23|Co-Pilot360 Assist 2.0|[Upstream](#upstream)|
-|Ford|F-150 Hybrid 2021-23|Co-Pilot360 Assist 2.0|[Upstream](#upstream)|
-|Ford|Focus 2018|Adaptive Cruise Control with Lane Centering|[Upstream](#upstream)|
-|Ford|Focus Hybrid 2018|Adaptive Cruise Control with Lane Centering|[Upstream](#upstream)|
-|Ford|Kuga 2020-23|Adaptive Cruise Control with Lane Centering|[Upstream](#upstream)|
-|Ford|Kuga Hybrid 2020-23|Adaptive Cruise Control with Lane Centering|[Upstream](#upstream)|
-|Ford|Kuga Hybrid 2024|All|[Upstream](#upstream)|
-|Ford|Kuga Plug-in Hybrid 2020-23|Adaptive Cruise Control with Lane Centering|[Upstream](#upstream)|
-|Ford|Kuga Plug-in Hybrid 2024|All|[Upstream](#upstream)|
-|Ford|Maverick 2022|LARIAT Luxury|[Upstream](#upstream)|
-|Ford|Maverick 2023-24|Co-Pilot360 Assist|[Upstream](#upstream)|
-|Ford|Maverick Hybrid 2022|LARIAT Luxury|[Upstream](#upstream)|
-|Ford|Maverick Hybrid 2023-24|Co-Pilot360 Assist|[Upstream](#upstream)|
-|Ford|Mustang Mach-E 2021-24|All|[Upstream](#upstream)|
-|Ford|Ranger 2024|Adaptive Cruise Control with Lane Centering|[Upstream](#upstream)|
-|Genesis|G70 2018|All|[Upstream](#upstream)|
-|Genesis|G70 2019-21|All|[Upstream](#upstream)|
-|Genesis|G70 2022-23|All|[Upstream](#upstream)|
-|Genesis|G80 2017|All|[Upstream](#upstream)|
-|Genesis|G80 2018-19|All|[Upstream](#upstream)|
-|Genesis|G80 (2.5T Advanced Trim, with HDA II) 2024|Highway Driving Assist II|[Upstream](#upstream)|
-|Genesis|G90 2017-20|All|[Upstream](#upstream)|
-|Genesis|GV60 (Advanced Trim) 2023|All|[Upstream](#upstream)|
-|Genesis|GV60 (Performance Trim) 2022-23|All|[Upstream](#upstream)|
-|Genesis|GV70 (2.5T Trim, without HDA II) 2022-24|All|[Upstream](#upstream)|
-|Genesis|GV70 (3.5T Trim, without HDA II) 2022-23|All|[Upstream](#upstream)|
-|Genesis|GV70 Electrified (Australia Only) 2022|All|[Upstream](#upstream)|
-|Genesis|GV70 Electrified (with HDA II) 2023-24|Highway Driving Assist II|[Upstream](#upstream)|
-|Genesis|GV80 2023|All|[Upstream](#upstream)|
-|GMC|Sierra 1500 2020-21|Driver Alert Package II|[Upstream](#upstream)|
+|Audi|RS3 2018|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
+|Audi|S3 2015-17|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
+|Chevrolet|Bolt EUV 2022-23|Premier or Premier Redline Trim without Super Cruise Package|[Dashcam mode](#dashcam)|
+|Chevrolet|Bolt EV 2022-23|2LT Trim with Adaptive Cruise Control Package|[Dashcam mode](#dashcam)|
+|Chevrolet|Equinox 2019-22|Adaptive Cruise Control (ACC)|[Dashcam mode](#dashcam)|
+|Chevrolet|Silverado 1500 2020-21|Safety Package II|[Dashcam mode](#dashcam)|
+|Chevrolet|Trailblazer 2021-22|Adaptive Cruise Control (ACC)|[Dashcam mode](#dashcam)|
+|Chrysler|Pacifica 2017-18|Adaptive Cruise Control (ACC)|[Dashcam mode](#dashcam)|
+|Chrysler|Pacifica 2019-20|Adaptive Cruise Control (ACC)|[Dashcam mode](#dashcam)|
+|Chrysler|Pacifica 2021-23|All|[Dashcam mode](#dashcam)|
+|Chrysler|Pacifica Hybrid 2017-18|Adaptive Cruise Control (ACC)|[Dashcam mode](#dashcam)|
+|Chrysler|Pacifica Hybrid 2019-25|Adaptive Cruise Control (ACC)|[Dashcam mode](#dashcam)|
+|comma|body|All|[Dashcam mode](#dashcam)|
+|CUPRA|Ateca 2018-23|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
+|Dodge|Durango 2020-21|Adaptive Cruise Control (ACC)|[Dashcam mode](#dashcam)|
+|Ford|Bronco Sport 2021-24|Co-Pilot360 Assist+|[Dashcam mode](#dashcam)|
+|Ford|Escape 2020-22|Co-Pilot360 Assist+|[Dashcam mode](#dashcam)|
+|Ford|Escape 2023-24|Co-Pilot360 Assist+|[Dashcam mode](#dashcam)|
+|Ford|Escape Hybrid 2020-22|Co-Pilot360 Assist+|[Dashcam mode](#dashcam)|
+|Ford|Escape Hybrid 2023-24|Co-Pilot360 Assist+|[Dashcam mode](#dashcam)|
+|Ford|Escape Plug-in Hybrid 2020-22|Co-Pilot360 Assist+|[Dashcam mode](#dashcam)|
+|Ford|Escape Plug-in Hybrid 2023-24|Co-Pilot360 Assist+|[Dashcam mode](#dashcam)|
+|Ford|Expedition 2022-24|Co-Pilot360 Assist 2.0|[Dashcam mode](#dashcam)|
+|Ford|Explorer 2020-24|Co-Pilot360 Assist+|[Dashcam mode](#dashcam)|
+|Ford|Explorer Hybrid 2020-24|Co-Pilot360 Assist+|[Dashcam mode](#dashcam)|
+|Ford|F-150 2021-23|Co-Pilot360 Assist 2.0|[Dashcam mode](#dashcam)|
+|Ford|F-150 Hybrid 2021-23|Co-Pilot360 Assist 2.0|[Dashcam mode](#dashcam)|
+|Ford|Focus 2018|Adaptive Cruise Control with Lane Centering|[Dashcam mode](#dashcam)|
+|Ford|Focus Hybrid 2018|Adaptive Cruise Control with Lane Centering|[Dashcam mode](#dashcam)|
+|Ford|Kuga 2020-23|Adaptive Cruise Control with Lane Centering|[Dashcam mode](#dashcam)|
+|Ford|Kuga Hybrid 2020-23|Adaptive Cruise Control with Lane Centering|[Dashcam mode](#dashcam)|
+|Ford|Kuga Hybrid 2024|All|[Dashcam mode](#dashcam)|
+|Ford|Kuga Plug-in Hybrid 2020-23|Adaptive Cruise Control with Lane Centering|[Dashcam mode](#dashcam)|
+|Ford|Kuga Plug-in Hybrid 2024|All|[Dashcam mode](#dashcam)|
+|Ford|Maverick 2022|LARIAT Luxury|[Dashcam mode](#dashcam)|
+|Ford|Maverick 2023-24|Co-Pilot360 Assist|[Dashcam mode](#dashcam)|
+|Ford|Maverick Hybrid 2022|LARIAT Luxury|[Dashcam mode](#dashcam)|
+|Ford|Maverick Hybrid 2023-24|Co-Pilot360 Assist|[Dashcam mode](#dashcam)|
+|Ford|Mustang Mach-E 2021-24|All|[Dashcam mode](#dashcam)|
+|Ford|Ranger 2024|Adaptive Cruise Control with Lane Centering|[Dashcam mode](#dashcam)|
+|Genesis|G70 2018|All|[Dashcam mode](#dashcam)|
+|Genesis|G70 2019-21|All|[Dashcam mode](#dashcam)|
+|Genesis|G70 2022-23|All|[Dashcam mode](#dashcam)|
+|Genesis|G80 2017|All|[Dashcam mode](#dashcam)|
+|Genesis|G80 2018-19|All|[Dashcam mode](#dashcam)|
+|Genesis|G80 (2.5T Advanced Trim, with HDA II) 2024|Highway Driving Assist II|[Dashcam mode](#dashcam)|
+|Genesis|G90 2017-20|All|[Dashcam mode](#dashcam)|
+|Genesis|GV60 (Advanced Trim) 2023|All|[Dashcam mode](#dashcam)|
+|Genesis|GV60 (Performance Trim) 2022-23|All|[Dashcam mode](#dashcam)|
+|Genesis|GV70 (2.5T Trim, without HDA II) 2022-24|All|[Dashcam mode](#dashcam)|
+|Genesis|GV70 (3.5T Trim, without HDA II) 2022-23|All|[Dashcam mode](#dashcam)|
+|Genesis|GV70 Electrified (Australia Only) 2022|All|[Dashcam mode](#dashcam)|
+|Genesis|GV70 Electrified (with HDA II) 2023-24|Highway Driving Assist II|[Dashcam mode](#dashcam)|
+|Genesis|GV80 2023|All|[Dashcam mode](#dashcam)|
+|GMC|Sierra 1500 2020-21|Driver Alert Package II|[Dashcam mode](#dashcam)|
 |GMC|Yukon 2019-20|Adaptive Cruise Control (ACC) & LKAS|[Dashcam mode](#dashcam)|
 |Honda|Accord 2018-22|All|[Upstream](#upstream)|
 |Honda|Accord 2023-24|All|[Community](#community)|
