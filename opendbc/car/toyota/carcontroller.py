@@ -60,13 +60,17 @@ class CarController(CarControllerBase):
     self.params = CarControllerParams(self.CP)
     self.last_torque = 0
     self.last_angle = 0
+    self.standstill_req = False
     self.permit_braking = True
+    self.steer_rate_counter = 0
+    self.distance_button = 0
+
+    # *** irene's stuff ***
+    self._resume_false_frame = None
     self.lead = False
     self.left_lane = False
     self.right_lane = False
-    self.steer_rate_counter = 0
     self.prohibit_neg_calculation = True
-    self.distance_button = 0
 
     # *** start long control state ***
     self.long_pid = get_long_tune(self.CP, self.params)
@@ -172,7 +176,22 @@ class CarController(CarControllerBase):
         can_sends.append(lta_steer_2)
 
     # *** gas and brake ***
-    self.standstill_req = not CC.cruiseControl.resume
+
+    # resume requested, clear pending delay and set standstill_req to low
+    if CC.cruiseControl.resume:
+        self._resume_false_frame = None
+        self.standstill_req = False
+    # resume not pressed
+    else:
+        # start delay timer if needed
+        if self._resume_false_frame is None:
+            self._resume_false_frame = self.frame
+
+        # only set standstill_req after waiting 1 s
+        if (self.frame - self._resume_false_frame) >= UI_HYSTERESIS_TIME:
+            self.standstill_req = True
+        else:
+            self.standstill_req = False
 
     # handle UI messages
     fcw_alert = hud_control.visualAlert == VisualAlert.fcw
