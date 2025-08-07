@@ -188,7 +188,7 @@ class CarController(CarControllerBase):
             self._resume_false_frame = self.frame
 
         # only set standstill_req after waiting 1 s
-        if (self.frame - self._resume_false_frame) >= UI_HYSTERESIS_TIME:
+        if (self.frame - self._resume_false_frame) >= 3. / DT_CTRL:
             self.standstill_req = True
         else:
             self.standstill_req = False
