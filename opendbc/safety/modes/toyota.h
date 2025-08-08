@@ -30,6 +30,8 @@
   {0x750, 0, 8, .check_relay = false}, \
   /* ACC */                            \
   {0x343, 0, 8, .check_relay = true},  \
+  /* RSA */ \
+  {0x489, 0, 8, .check_relay = false}, {0x48A, 0, 8, .check_relay = false}, {0x48B, 0, 8, .check_relay = false}, \
 
 #define TOYOTA_COMMON_RX_CHECKS(lta)                                                                                                       \
   {.msg = {{ 0xaa, 0, 8, 83U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  \
