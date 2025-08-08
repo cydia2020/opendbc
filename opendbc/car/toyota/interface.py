@@ -74,7 +74,7 @@ class CarInterface(CarInterfaceBase):
         if fw.ecu == "eps" and not fw.fwVersion == b'8965B47060\x00\x00\x00\x00\x00\x00':
           ret.steerActuatorDelay = 0.25
           CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning, \
-                                                 steering_angle_deadzone_deg=0.0 if 0x23 in fingerprint[0] else 0.2)
+                                                 steering_angle_deadzone_deg=0.0 if ret.flags & ToyotaFlags.SECONDARY_STEER_ANGLE.value else 0.2)
 
     elif candidate in (CAR.LEXUS_RX, CAR.LEXUS_RX_TSS2):
       stop_and_go = True
