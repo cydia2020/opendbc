@@ -293,6 +293,9 @@ class CarController(CarControllerBase):
         else:
           can_sends.append(toyotacan.create_accel_command(self.packer, 0, 0, pcm_cancel_cmd, True, False, self.lead or CS.out.vEgo < 12., CS.acc_type, False, self.distance_button))
 
+    if self.frame % 100 == 0:
+      can_sends.append(toyotacan.create_rsa_1_command(self.packer))
+
     # *** hud ui ***
     # usually this is sent at a much lower rate, but no adverse effects has been observed when sent at a much higher rate
     # doing so simplifies carcontroller logic and allows faster response from the vehicle's combination meter

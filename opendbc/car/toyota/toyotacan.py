@@ -103,6 +103,22 @@ def create_fcw_command(packer, fcw):
   }
   return packer.make_can_msg("PCS_HUD", 0, values)
 
+def create_rsa_1_command(packer):
+  values = {
+    "TSGNGRY1": 4,
+    "TSGNHLT1": 3,
+    "SPDVAL1": 60,
+    "SPLSGN1": 1,
+    "SPLSGN2": 2,
+    "TSGN2": 16,
+    "TSGNGRY2": 4,
+    "TSGNHLT2": 3,
+    "SPDVAL2": 60,
+    "BZRRQ_P": 2,
+    "BZRRQ_A": 0,
+    "SYNCID1": 0,
+  }
+  return packer.make_can_msg("RSA1", 0, values)
 
 def create_ui_command(packer, steer, chime, left_line, right_line, enabled, stock_lkas_hud,
                       lda_left_lane, lda_right_lane, sws_beeps, lda_sa_toggle, alert_prompt,
