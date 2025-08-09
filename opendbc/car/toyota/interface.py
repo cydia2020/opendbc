@@ -54,14 +54,9 @@ class CarInterface(CarInterfaceBase):
     if any(msg in fingerprint[0] for msg in [0x23]):
       ret.flags |= ToyotaFlags.SECONDARY_STEER_ANGLE.value
 
-    # Detect 0x343 on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
-    if any(msg in fingerprint[2] for msg in (0x343, 0x4CB)) and candidate not in TSS2_CAR:
-      ret.flags |= ToyotaFlags.DSU_BYPASS.value
-
     # In TSS2 cars, the camera does long control
     found_ecus = [fw.ecu for fw in car_fw]
-    ret.enableDsu = len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR) \
-                    and not bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)
+    ret.enableDsu = len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR)
 
     if Ecu.hybrid in found_ecus:
       ret.flags |= ToyotaFlags.HYBRID.value
@@ -139,15 +134,18 @@ class CarInterface(CarInterfaceBase):
     if ret.flags & ToyotaFlags.SECOC.value:
       ret.openpilotLongitudinalControl = False
     else:
-      ret.openpilotLongitudinalControl = ret.enableDsu or \
-        candidate in (TSS2_CAR - RADAR_ACC_CAR) or \
-        bool(ret.flags & ToyotaFlags.DISABLE_RADAR.value) or \
-        bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)
+      ret.openpilotLongitudinalControl = ret.enableDsu or candidate in (TSS2_CAR - RADAR_ACC_CAR) or bool(ret.flags & ToyotaFlags.DISABLE_RADAR.value)
 
     ret.autoResumeSng = ret.openpilotLongitudinalControl and candidate in NO_STOP_TIMER_CAR
 
     if not ret.openpilotLongitudinalControl:
       ret.safetyConfigs[0].safetyParam |= ToyotaSafetyFlags.STOCK_LONGITUDINAL.value
+
+    # Detect 0x343 on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
+    if any(msg in fingerprint[2] for msg in (0x343, 0x4CB)) and candidate not in TSS2_CAR:
+      ret.flags |= ToyotaFlags.DSU_BYPASS.value
+      ret.safetyConfigs[0].safetyParam &= ~ToyotaSafetyFlags.STOCK_LONGITUDINAL.value
+      ret.openpilotLongitudinalControl = True
 
     # min speed to enable ACC. if car can do stop and go, then set enabling speed
     # to a negative value, so it won't matter.
