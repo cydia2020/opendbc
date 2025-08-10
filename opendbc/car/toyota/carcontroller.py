@@ -289,9 +289,9 @@ class CarController(CarControllerBase):
       # we can spam can to cancel the system even if we are using lat only control
       if pcm_cancel_cmd:
         if self.CP.carFingerprint in UNSUPPORTED_DSU_CAR:
-          can_sends.append(toyotacan.create_acc_cancel_command(self.packer))
+          can_sends.append(toyotacan.create_pcm_cancel_command(self.packer))
         else:
-          can_sends.append(toyotacan.create_accel_command(self.packer, 0, 0, pcm_cancel_cmd, True, False, self.lead or CS.out.vEgo < 12., CS.acc_type, False, self.distance_button))
+          can_sends.append(toyotacan.create_acc_cancel_command(self.packer))
 
     # *** hud ui ***
     # usually this is sent at a much lower rate, but no adverse effects has been observed when sent at a much higher rate

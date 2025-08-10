@@ -80,7 +80,7 @@ def create_pcs_commands(packer, accel, active, mass):
   return [msg1, msg2]
 
 
-def create_acc_cancel_command(packer):
+def create_pcm_cancel_command(packer):
   values = {
     "GAS_RELEASED": 0,
     "CRUISE_ACTIVE": 0,
@@ -90,6 +90,13 @@ def create_acc_cancel_command(packer):
     "CANCEL_REQ": 1,
   }
   return packer.make_can_msg("PCM_CRUISE", 0, values)
+
+
+def create_acc_cancel_command(packer):
+  values = {
+    "CANCEL_REQ": 1,
+  }
+  return packer.make_can_msg("ACC_CONTROL", 0, values)
 
 
 def create_fcw_command(packer, fcw):
