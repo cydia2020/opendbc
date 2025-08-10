@@ -142,7 +142,7 @@ class CarInterface(CarInterfaceBase):
       ret.safetyConfigs[0].safetyParam |= ToyotaSafetyFlags.STOCK_LONGITUDINAL.value
 
     # Detect dsu messages on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
-    if any(msg in fingerprint[2] for msg in (0x365, 0x366, 0x4CB)) and candidate not in TSS2_CAR:
+    if any(msg in fingerprint[2] for msg in [0x365]) and candidate not in TSS2_CAR:
       ret.flags |= ToyotaFlags.DSU_BYPASS.value
       ret.safetyConfigs[0].safetyParam &= ~ToyotaSafetyFlags.STOCK_LONGITUDINAL.value
       ret.openpilotLongitudinalControl = True
