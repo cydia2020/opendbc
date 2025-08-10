@@ -300,7 +300,7 @@ class CarController(CarControllerBase):
       can_sends.append(toyotacan.create_ui_command(self.packer, steer_alert, cancel_chime, self.left_lane,
                                                    self.right_lane, CC.enabled, CS.lkas_hud, CS.lda_left_lane,
                                                    CS.lda_right_lane, CS.sws_beeps, CS.lda_sa_toggle, alert_prompt,
-                                                   alert_prompt_repeat, alert_immediate))
+                                                   alert_prompt_repeat, alert_immediate, self.CP.enableDsu))
 
     if self.CP.enableDsu or self.CP.flags & ToyotaFlags.DISABLE_RADAR.value:
       can_sends.append(toyotacan.create_fcw_command(self.packer, fcw_alert))
