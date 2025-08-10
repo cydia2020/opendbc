@@ -113,7 +113,7 @@ def create_fcw_command(packer, fcw):
 
 def create_ui_command(packer, steer, chime, left_line, right_line, enabled, stock_lkas_hud,
                       lda_left_lane, lda_right_lane, sws_beeps, lda_sa_toggle, alert_prompt,
-                      alert_prompt_repeat, alert_immediate):
+                      alert_prompt_repeat, alert_immediate, enable_dsu):
   values = {
     "TWO_BEEPS": chime or sws_beeps or alert_prompt,
     "LDA_ALERT":  3 if alert_immediate else 2 if alert_prompt_repeat else 1 if alert_prompt or steer else 0,
@@ -126,7 +126,7 @@ def create_ui_command(packer, steer, chime, left_line, right_line, enabled, stoc
 
   # lane sway functionality
   # not all cars have LKAS_HUD — update with camera values if available
-  if len(stock_lkas_hud):
+  if len(stock_lkas_hud) and not enable_dsu:
     values.update({s: stock_lkas_hud[s] for s in [
       # keep stock SWS
       "LANE_SWAY_FLD",
