@@ -51,8 +51,8 @@ class CarInterface(CarInterfaceBase):
     stop_and_go = candidate in TSS2_CAR
 
     # Detect dsu messages on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
-    if any(msg in fingerprint[2] for msg in (0x365, 0x366, 0x4CB)) and candidate not in TSS2_CAR:
-      ret.flags |= ToyotaFlags.DSU_BYPASS.value
+#    if any(msg in fingerprint[2] for msg in (0x365, 0x366, 0x4CB)) and candidate not in TSS2_CAR:
+#      ret.flags |= ToyotaFlags.DSU_BYPASS.value
 
     # Detect 0x23, the CAN ID used by ZSS
     if any(msg in fingerprint[0] for msg in [0x23]):
@@ -60,11 +60,11 @@ class CarInterface(CarInterfaceBase):
 
     # In TSS2 cars, the camera does long control
     found_ecus = [fw.ecu for fw in car_fw]
-    ret.enableDsu = len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR) \
-                    and not bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)
+#    ret.enableDsu = len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR) \
+#                    and not bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)
 
-    if ret.enableDsu:
-      ret.safetyConfigs[0].safetyParam |= ToyotaSafetyFlags.ENABLE_DSU.value
+#    if ret.enableDsu:
+#      ret.safetyConfigs[0].safetyParam |= ToyotaSafetyFlags.ENABLE_DSU.value
 
     if Ecu.hybrid in found_ecus:
       ret.flags |= ToyotaFlags.HYBRID.value
@@ -108,11 +108,6 @@ class CarInterface(CarInterfaceBase):
       # TODO: Some of these platforms are not advertised to have full range ACC, are they similar to SNG_WITHOUT_DSU cars?
       stop_and_go = True
 
-    # TODO: these models can do stop and go, but unclear if it requires sDSU or unplugging DSU.
-    #  For now, don't list stop and go functionality in the docs
-    if ret.flags & ToyotaFlags.SNG_WITHOUT_DSU:
-      stop_and_go = (ret.enableDsu or bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)) and not docs
-
     ret.centerToFront = ret.wheelbase * 0.44
 
     # TODO: Some TSS-P platforms have BSM, but are flipped based on region or driving direction.
@@ -130,6 +125,21 @@ class CarInterface(CarInterfaceBase):
       # Disabling radar is only supported on TSS2 radar-ACC cars
       if alpha_long and candidate in RADAR_ACC_CAR:
         ret.flags |= ToyotaFlags.DISABLE_RADAR.value
+
+    if candidate not in NO_DSU_CAR:
+      ret.alphaLongitudinalAvailable = True
+
+      if alpha_long and candidate not in NO_DSU_CAR:
+        ret.flags |= ToyotaFlags.DISABLE_DSU.value
+
+    ret.enableDsu = bool(ret.flags & ToyotaFlags.DISABLE_DSU)
+    if ret.enableDsu:
+      ret.safetyConfigs[0].safetyParam |= ToyotaSafetyFlags.ENABLE_DSU.value
+
+    # TODO: these models can do stop and go, but unclear if it requires sDSU or unplugging DSU.
+    #  For now, don't list stop and go functionality in the docs
+    if ret.flags & ToyotaFlags.SNG_WITHOUT_DSU:
+      stop_and_go = (ret.enableDsu or bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)) and not docs
 
     # openpilot longitudinal enabled by default:
     #  - non-(TSS2 radar ACC cars) w/ smartDSU installed
