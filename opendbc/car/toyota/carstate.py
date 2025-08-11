@@ -183,12 +183,8 @@ class CarState(CarStateBase):
     if self.CP.carFingerprint in TSS2_CAR:
       # lkas button is wired to the camera
       prev_lkas_button = self.lkas_button
-      self.lkas_button = cp_cam.vl["LKAS_HUD"]["LDA_ON_MESSAGE"]
-
-      # Cycles between 1 and 2 when pressing the button, then rests back at 0 after ~3s
-      if self.lkas_button != 0 and self.lkas_button != prev_lkas_button:
-        buttonEvents.extend(create_button_events(1, 0, {1: ButtonType.lkas}) +
-                            create_button_events(0, 1, {1: ButtonType.lkas}))
+      self.lkas_button = cp_cam.vl["ADAS_TOGGLE_STATE_2"]["LKAS_BUTTON"]
+      buttonEvents += create_button_events(self.lkas_button, prev_lkas_button, {1: ButtonType.lkas})
 
       if self.CP.carFingerprint not in RADAR_ACC_CAR:
         # distance button is wired to the ACC module (camera or radar)
