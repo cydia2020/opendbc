@@ -12,6 +12,11 @@
 |Acura|MDX 2025|All|[Community](#community)|
 |Acura|RDX 2016-18|AcuraWatch Plus or Advance Package|[Upstream](#upstream)|
 |Acura|RDX 2019-21|All|[Upstream](#upstream)|
+|Acura|RDX 2022-25|All|[Community](#community)|
+|Acura|RLX 2017|Advance Package or Technology Package|[Community](#community)|
+|Acura|TLX 2015-17|Advance Package|[Community](#community)|
+|Acura|TLX 2018-20|All|[Community](#community)|
+|Acura|ZDX 2024|All|[Not compatible](#can-bus-security)|
 |Audi|A3 2014-19|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
 |Audi|A3 Sportback e-tron 2017-18|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
 |Audi|A4 2016-24|All|[Not compatible](#flexray)|
