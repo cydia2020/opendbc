@@ -23,6 +23,7 @@
   TOYOTA_COMMON_TX_MSGS \
   /* radar diagnostic address */       \
   {0x750, 0, 8, .check_relay = false}, \
+  {0x791, 0, 8, .check_relay = false}, \
   /* ACC */                            \
   {0x343, 0, 8, .check_relay = true},  \
   /* PCS_HUD */                        \
