@@ -61,7 +61,7 @@ class CarInterface(CarInterfaceBase):
     # In TSS2 cars, the camera does long control
     found_ecus = [fw.ecu for fw in car_fw]
     ret.enableDsu = len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR) \
-                    and not ret.flags & ToyotaFlags.DSU_BYPASS.value
+                    and not bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)
 
     if ret.enableDsu:
       ret.safetyConfigs[0].safetyParam |= ToyotaSafetyFlags.ENABLE_DSU.value
@@ -142,7 +142,7 @@ class CarInterface(CarInterfaceBase):
     if ret.flags & ToyotaFlags.SECOC.value:
       ret.openpilotLongitudinalControl = False
     else:
-      ret.openpilotLongitudinalControl = ret.enableDsu or candidate in (TSS2_CAR - RADAR_ACC_CAR) or bool(ret.flags & ToyotaFlags.DISABLE_RADAR.value) or ret.flags & ToyotaFlags.DSU_BYPASS.value
+      ret.openpilotLongitudinalControl = ret.enableDsu or candidate in (TSS2_CAR - RADAR_ACC_CAR) or bool(ret.flags & ToyotaFlags.DISABLE_RADAR.value) or bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)
 
     ret.autoResumeSng = ret.openpilotLongitudinalControl and candidate in NO_STOP_TIMER_CAR
 
