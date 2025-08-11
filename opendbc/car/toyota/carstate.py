@@ -65,7 +65,7 @@ class CarState(CarStateBase):
 
     if not self.CP.flags & ToyotaFlags.SECOC.value:
       self.gvc = cp.vl["VSC1S07"]["GVC"]
-    self.pcm_accel_net = cp.vl["PCM_CRUISE"]["NEUTRAL_FORCE"] / self.CP.mass
+      self.pcm_accel_net = cp.vl["PCM_CRUISE"]["NEUTRAL_FORCE"] / self.CP.mass
 
     ret.doorOpen = any([cp.vl["BODY_CONTROL_STATE"]["DOOR_OPEN_FL"], cp.vl["BODY_CONTROL_STATE"]["DOOR_OPEN_FR"],
                         cp.vl["BODY_CONTROL_STATE"]["DOOR_OPEN_RL"], cp.vl["BODY_CONTROL_STATE"]["DOOR_OPEN_RR"]])
