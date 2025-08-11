@@ -62,6 +62,7 @@ class ToyotaFlags(IntFlag):
   # Irene's flags
   DSU_BYPASS = 2
   SECONDARY_STEER_ANGLE = 4096
+  DISABLE_DSU = 8192
 
   # Detected flags
   HYBRID = 1
