@@ -4,14 +4,14 @@
 
 |Make|Model|Package|Support Level|
 |---|---|---|:---:|
-|Acura|ILX 2016-18|Technology Plus Package or AcuraWatch Plus|[Upstream](#upstream)|
-|Acura|ILX 2019|All|[Upstream](#upstream)|
+|Acura|ILX 2016-18|Technology Plus Package or AcuraWatch Plus|[Dashcam mode](#dashcam)|
+|Acura|ILX 2019|All|[Dashcam mode](#dashcam)|
 |Acura|Integra 2023-25|All|[Community](#community)|
 |Acura|MDX 2015-16|Advance Package|[Community](#community)|
 |Acura|MDX 2017-20|All|[Community](#community)|
-|Acura|MDX 2025|All except Type S|[Upstream](#upstream)|
-|Acura|RDX 2016-18|AcuraWatch Plus or Advance Package|[Upstream](#upstream)|
-|Acura|RDX 2019-21|All|[Upstream](#upstream)|
+|Acura|MDX 2025|All except Type S|[Dashcam mode](#dashcam)|
+|Acura|RDX 2016-18|AcuraWatch Plus or Advance Package|[Dashcam mode](#dashcam)|
+|Acura|RDX 2019-21|All|[Dashcam mode](#dashcam)|
 |Acura|RDX 2022-25|All|[Community](#community)|
 |Acura|RLX 2017|Advance Package or Technology Package|[Community](#community)|
 |Acura|TLX 2015-17|Advance Package|[Community](#community)|
@@ -81,70 +81,70 @@
 |GMC|Sierra 1500 2020-21|Driver Alert Package II|[Dashcam mode](#dashcam)|
 |GMC|Yukon 2019-20|Adaptive Cruise Control (ACC) & LKAS|[Dashcam mode](#dashcam)|
 |Honda|Accord 2016-17|Honda Sensing|[Community](#community)|
-|Honda|Accord 2018-22|All|[Upstream](#upstream)|
-|Honda|Accord 2023-25|All|[Upstream](#upstream)|
-|Honda|Accord Hybrid 2018-22|All|[Upstream](#upstream)|
-|Honda|Accord Hybrid 2023-25|All|[Upstream](#upstream)|
-|Honda|City (Brazil only) 2023|All|[Upstream](#upstream)|
-|Honda|Civic 2016-18|Honda Sensing|[Upstream](#upstream)|
-|Honda|Civic 2019-21|All|[Upstream](#upstream)|
-|Honda|Civic 2022-24|All|[Upstream](#upstream)|
-|Honda|Civic Hatchback 2017-18|Honda Sensing|[Upstream](#upstream)|
-|Honda|Civic Hatchback 2019-21|All|[Upstream](#upstream)|
-|Honda|Civic Hatchback 2022-24|All|[Upstream](#upstream)|
-|Honda|Civic Hatchback Hybrid 2025-26|All|[Upstream](#upstream)|
-|Honda|Civic Hatchback Hybrid (Europe only) 2023|All|[Upstream](#upstream)|
-|Honda|Civic Hybrid 2025|All|[Upstream](#upstream)|
+|Honda|Accord 2018-22|All|[Dashcam mode](#dashcam)|
+|Honda|Accord 2023-25|All|[Dashcam mode](#dashcam)|
+|Honda|Accord Hybrid 2018-22|All|[Dashcam mode](#dashcam)|
+|Honda|Accord Hybrid 2023-25|All|[Dashcam mode](#dashcam)|
+|Honda|City (Brazil only) 2023|All|[Dashcam mode](#dashcam)|
+|Honda|Civic 2016-18|Honda Sensing|[Dashcam mode](#dashcam)|
+|Honda|Civic 2019-21|All|[Dashcam mode](#dashcam)|
+|Honda|Civic 2022-24|All|[Dashcam mode](#dashcam)|
+|Honda|Civic Hatchback 2017-18|Honda Sensing|[Dashcam mode](#dashcam)|
+|Honda|Civic Hatchback 2019-21|All|[Dashcam mode](#dashcam)|
+|Honda|Civic Hatchback 2022-24|All|[Dashcam mode](#dashcam)|
+|Honda|Civic Hatchback Hybrid 2025-26|All|[Dashcam mode](#dashcam)|
+|Honda|Civic Hatchback Hybrid (Europe only) 2023|All|[Dashcam mode](#dashcam)|
+|Honda|Civic Hybrid 2025|All|[Dashcam mode](#dashcam)|
 |Honda|Clarity 2018-21|All|[Community](#community)|
-|Honda|CR-V 2015-16|Touring Trim|[Upstream](#upstream)|
-|Honda|CR-V 2017-22|Honda Sensing|[Upstream](#upstream)|
-|Honda|CR-V 2023-25|All|[Upstream](#upstream)|
-|Honda|CR-V Hybrid 2017-22|Honda Sensing|[Upstream](#upstream)|
-|Honda|CR-V Hybrid 2023-25|All|[Upstream](#upstream)|
-|Honda|e 2020|All|[Upstream](#upstream)|
-|Honda|Fit 2018-20|Honda Sensing|[Upstream](#upstream)|
-|Honda|Freed 2020|Honda Sensing|[Upstream](#upstream)|
-|Honda|HR-V 2019-22|Honda Sensing|[Upstream](#upstream)|
-|Honda|HR-V 2023-25|All|[Upstream](#upstream)|
-|Honda|Insight 2019-22|All|[Upstream](#upstream)|
-|Honda|Inspire 2018|All|[Upstream](#upstream)|
-|Honda|Odyssey 2018-20|Honda Sensing|[Upstream](#upstream)|
+|Honda|CR-V 2015-16|Touring Trim|[Dashcam mode](#dashcam)|
+|Honda|CR-V 2017-22|Honda Sensing|[Dashcam mode](#dashcam)|
+|Honda|CR-V 2023-25|All|[Dashcam mode](#dashcam)|
+|Honda|CR-V Hybrid 2017-22|Honda Sensing|[Dashcam mode](#dashcam)|
+|Honda|CR-V Hybrid 2023-25|All|[Dashcam mode](#dashcam)|
+|Honda|e 2020|All|[Dashcam mode](#dashcam)|
+|Honda|Fit 2018-20|Honda Sensing|[Dashcam mode](#dashcam)|
+|Honda|Freed 2020|Honda Sensing|[Dashcam mode](#dashcam)|
+|Honda|HR-V 2019-22|Honda Sensing|[Dashcam mode](#dashcam)|
+|Honda|HR-V 2023-25|All|[Dashcam mode](#dashcam)|
+|Honda|Insight 2019-22|All|[Dashcam mode](#dashcam)|
+|Honda|Inspire 2018|All|[Dashcam mode](#dashcam)|
+|Honda|Odyssey 2018-20|Honda Sensing|[Dashcam mode](#dashcam)|
 |Honda|Odyssey 2021-25|All|[Community](#community)|
-|Honda|Passport 2019-25|All|[Upstream](#upstream)|
+|Honda|Passport 2019-25|All|[Dashcam mode](#dashcam)|
 |Honda|Passport 2026|All|[Community](#community)|
-|Honda|Pilot 2016-22|Honda Sensing|[Upstream](#upstream)|
-|Honda|Pilot 2023-25|All|[Upstream](#upstream)|
+|Honda|Pilot 2016-22|Honda Sensing|[Dashcam mode](#dashcam)|
+|Honda|Pilot 2023-25|All|[Dashcam mode](#dashcam)|
 |Honda|Prologue 2024-25|All|[Not compatible](#can-bus-security)|
-|Honda|Ridgeline 2017-25|Honda Sensing|[Upstream](#upstream)|
-|Hyundai|Azera 2022|All|[Upstream](#upstream)|
-|Hyundai|Azera Hybrid 2019|All|[Upstream](#upstream)|
-|Hyundai|Azera Hybrid 2020|All|[Upstream](#upstream)|
-|Hyundai|Custin 2023|All|[Upstream](#upstream)|
-|Hyundai|Elantra 2017-18|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|Elantra 2019|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|Elantra 2021-23|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|Elantra GT 2017-20|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|Elantra Hybrid 2021-23|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|Genesis 2015-16|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|i30 2017-19|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|Ioniq 5 (Southeast Asia and Europe only) 2022-24|All|[Upstream](#upstream)|
-|Hyundai|Ioniq 5 (with HDA II) 2022-24|Highway Driving Assist II|[Upstream](#upstream)|
-|Hyundai|Ioniq 5 (without HDA II) 2022-24|Highway Driving Assist|[Upstream](#upstream)|
-|Hyundai|Ioniq 6 (with HDA II) 2023-24|Highway Driving Assist II|[Upstream](#upstream)|
-|Hyundai|Ioniq Electric 2019|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|Ioniq Electric 2020|All|[Upstream](#upstream)|
-|Hyundai|Ioniq Hybrid 2017-19|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|Ioniq Hybrid 2020-22|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|Ioniq Plug-in Hybrid 2019|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|Ioniq Plug-in Hybrid 2020-22|All|[Upstream](#upstream)|
-|Hyundai|Kona 2020|Smart Cruise Control (SCC)|[Upstream](#upstream)|
+|Honda|Ridgeline 2017-25|Honda Sensing|[Dashcam mode](#dashcam)|
+|Hyundai|Azera 2022|All|[Dashcam mode](#dashcam)|
+|Hyundai|Azera Hybrid 2019|All|[Dashcam mode](#dashcam)|
+|Hyundai|Azera Hybrid 2020|All|[Dashcam mode](#dashcam)|
+|Hyundai|Custin 2023|All|[Dashcam mode](#dashcam)|
+|Hyundai|Elantra 2017-18|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|Elantra 2019|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|Elantra 2021-23|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|Elantra GT 2017-20|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|Elantra Hybrid 2021-23|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|Genesis 2015-16|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|i30 2017-19|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|Ioniq 5 (Southeast Asia and Europe only) 2022-24|All|[Dashcam mode](#dashcam)|
+|Hyundai|Ioniq 5 (with HDA II) 2022-24|Highway Driving Assist II|[Dashcam mode](#dashcam)|
+|Hyundai|Ioniq 5 (without HDA II) 2022-24|Highway Driving Assist|[Dashcam mode](#dashcam)|
+|Hyundai|Ioniq 6 (with HDA II) 2023-24|Highway Driving Assist II|[Dashcam mode](#dashcam)|
+|Hyundai|Ioniq Electric 2019|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|Ioniq Electric 2020|All|[Dashcam mode](#dashcam)|
+|Hyundai|Ioniq Hybrid 2017-19|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|Ioniq Hybrid 2020-22|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|Ioniq Plug-in Hybrid 2019|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|Ioniq Plug-in Hybrid 2020-22|All|[Dashcam mode](#dashcam)|
+|Hyundai|Kona 2020|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
 |Hyundai|Kona 2022-23|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
-|Hyundai|Kona Electric 2018-21|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|Kona Electric 2022-23|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|Kona Electric (with HDA II, Korea only) 2023|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|Kona Hybrid 2020|Smart Cruise Control (SCC)|[Upstream](#upstream)|
-|Hyundai|Nexo 2021|All|[Upstream](#upstream)|
-|Hyundai|Palisade 2020-22|All|[Upstream](#upstream)|
+|Hyundai|Kona Electric 2018-21|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|Kona Electric 2022-23|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|Kona Electric (with HDA II, Korea only) 2023|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|Kona Hybrid 2020|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
+|Hyundai|Nexo 2021|All|[Dashcam mode](#dashcam)|
+|Hyundai|Palisade 2020-22|All|[Dashcam mode](#dashcam)|
 |Hyundai|Palisade 2023-24|HDA2|[Community](#community)|
 |Hyundai|Santa Cruz 2022-24|Smart Cruise Control (SCC)|[Dashcam mode](#dashcam)|
 |Hyundai|Santa Fe 2019-20|All|[Dashcam mode](#dashcam)|
@@ -237,13 +237,13 @@
 |Mazda|CX-5 2017-21|All|[Dashcam mode](#dashcam)|
 |Mazda|CX-5 2022-25|All|[Dashcam mode](#dashcam)|
 |Mazda|CX-9 2016-20|All|[Dashcam mode](#dashcam)|
-|Mazda|CX-9 2021-23|All|[Upstream](#upstream)|
-|Nissan|Altima 2019-20|ProPILOT Assist|[Upstream](#upstream)|
-|Nissan|Leaf 2018-23|ProPILOT Assist|[Upstream](#upstream)|
-|Nissan|Rogue 2018-20|ProPILOT Assist|[Upstream](#upstream)|
-|Nissan|X-Trail 2017|ProPILOT Assist|[Upstream](#upstream)|
+|Mazda|CX-9 2021-23|All|[Dashcam mode](#dashcam)|
+|Nissan|Altima 2019-20|ProPILOT Assist|[Dashcam mode](#dashcam)|
+|Nissan|Leaf 2018-23|ProPILOT Assist|[Dashcam mode](#dashcam)|
+|Nissan|Rogue 2018-20|ProPILOT Assist|[Dashcam mode](#dashcam)|
+|Nissan|X-Trail 2017|ProPILOT Assist|[Dashcam mode](#dashcam)|
 |Peugeot|208 2019-25|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
-|Ram|1500 2019-24|Adaptive Cruise Control (ACC)|[Upstream](#upstream)|
+|Ram|1500 2019-24|Adaptive Cruise Control (ACC)|[Dashcam mode](#dashcam)|
 |Ram|2500 2020-24|Adaptive Cruise Control (ACC)|[Dashcam mode](#dashcam)|
 |Ram|3500 2019-22|Adaptive Cruise Control (ACC)|[Dashcam mode](#dashcam)|
 |Rivian|R1S 2022-24|All|[Dashcam mode](#dashcam)|
@@ -342,12 +342,12 @@
 |Toyota|Tundra 2022-25|Any|[Not compatible](#can-bus-security)|
 |Toyota|Venza 2021-25|Any|[Not compatible](#can-bus-security)|
 |Toyota|Yaris (Non-US only) 2020, 2023|All|[Community](#community)|
-|Volkswagen|Arteon 2018-23|Adaptive Cruise Control (ACC) & Lane Assist|[Upstream](#upstream)|
-|Volkswagen|Arteon eHybrid 2020-23|Adaptive Cruise Control (ACC) & Lane Assist|[Upstream](#upstream)|
-|Volkswagen|Arteon R 2020-23|Adaptive Cruise Control (ACC) & Lane Assist|[Upstream](#upstream)|
-|Volkswagen|Arteon Shooting Brake 2020-23|Adaptive Cruise Control (ACC) & Lane Assist|[Upstream](#upstream)|
-|Volkswagen|Atlas 2018-23|Adaptive Cruise Control (ACC) & Lane Assist|[Upstream](#upstream)|
-|Volkswagen|Atlas Cross Sport 2020-22|Adaptive Cruise Control (ACC) & Lane Assist|[Upstream](#upstream)|
+|Volkswagen|Arteon 2018-23|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
+|Volkswagen|Arteon eHybrid 2020-23|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
+|Volkswagen|Arteon R 2020-23|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
+|Volkswagen|Arteon Shooting Brake 2020-23|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
+|Volkswagen|Atlas 2018-23|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
+|Volkswagen|Atlas Cross Sport 2020-22|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
 |Volkswagen|Caddy 2019|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
 |Volkswagen|Caddy Maxi 2019|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
 |Volkswagen|California 2021-23|Adaptive Cruise Control (ACC) & Lane Assist|[Dashcam mode](#dashcam)|
