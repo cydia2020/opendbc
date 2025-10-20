@@ -4,13 +4,11 @@
 
 // Stock longitudinal
 #define TOYOTA_BASE_TX_MSGS \
-  {0x191, 0, 8, .check_relay = true},   /* LTA steer cmd */  \
-  {0x412, 0, 8, .check_relay = true},   /* LKAS ui cmd */  \
-  {0x1D2, 0, 8, .check_relay = false},  /*PCM cancel cmd */  \
+  {0x191, 0, 8, .check_relay = true}, {0x412, 0, 8, .check_relay = true}, {0x1D2, 0, 8, .check_relay = false},  /* LKAS + LTA + PCM cancel cmd */  \
 
 #define TOYOTA_COMMON_TX_MSGS \
   TOYOTA_BASE_TX_MSGS \
-  {0x2E4, 0, 5, .check_relay = true},   /* LKAS steer cmd */  \
+  {0x2E4, 0, 5, .check_relay = true}, \
   {0x343, 0, 8, .check_relay = false},  /* ACC cancel cmd */  \
 
 #define TOYOTA_COMMON_SECOC_TX_MSGS \
@@ -20,22 +18,18 @@
 
 #define TOYOTA_COMMON_LONG_TX_MSGS \
   TOYOTA_COMMON_TX_MSGS \
-  /* radar diagnostic address */       \
-  {0x750, 0, 8, .check_relay = false}, \
-  /* ACC */                            \
-  {0x343, 0, 8, .check_relay = true},  \
-  /* PCS_HUD */                        \
-  {0x411, 0, 8, .check_relay = false}, \
-
-// only allow these when enableDsu is true
-#define TOYOTA_COMMON_DSU_TX_MSGS \
-  TOYOTA_COMMON_LONG_TX_MSGS \
   /* DSU bus 0 */ \
   {0x283, 0, 7, .check_relay = false}, {0x2E6, 0, 8, .check_relay = false}, {0x2E7, 0, 8, .check_relay = false}, {0x33E, 0, 7, .check_relay = false}, \
   {0x344, 0, 8, .check_relay = false}, {0x365, 0, 7, .check_relay = false}, {0x366, 0, 7, .check_relay = false}, {0x4CB, 0, 8, .check_relay = false}, \
   /* DSU bus 1 */ \
   {0x128, 1, 6, .check_relay = false}, {0x141, 1, 4, .check_relay = false}, {0x160, 1, 8, .check_relay = false}, {0x161, 1, 7, .check_relay = false}, \
   {0x470, 1, 4, .check_relay = false}, \
+  /* PCS_HUD */                        \
+  {0x411, 0, 8, .check_relay = false}, \
+  /* radar diagnostic address */       \
+  {0x750, 0, 8, .check_relay = false}, \
+  /* ACC */                            \
+  {0x343, 0, 8, .check_relay = true},  \
 
 #define TOYOTA_COMMON_SECOC_LONG_TX_MSGS \
   TOYOTA_COMMON_SECOC_TX_MSGS \
@@ -251,7 +245,7 @@ static bool toyota_tx_hook(const CANPacket_t *msg) {
     // AEB: block all actuation. only used when DSU is unplugged
     if (msg->addr == 0x283U) {
       // only allow the checksum, which is the last byte
-      bool block = !toyota_stock_longitudinal && ((GET_BYTES(msg, 0, 4) != 0U) || (msg->data[4] != 0U) || (msg->data[5] != 0U));
+      bool block = (GET_BYTES(msg, 0, 4) != 0U) || (msg->data[4] != 0U) || (msg->data[5] != 0U);
       if (block) {
         tx = false;
       }
@@ -373,7 +367,6 @@ static safety_config toyota_init(uint16_t param) {
   const uint32_t TOYOTA_PARAM_ALT_BRAKE = 1UL << TOYOTA_PARAM_OFFSET;
   const uint32_t TOYOTA_PARAM_STOCK_LONGITUDINAL = 2UL << TOYOTA_PARAM_OFFSET;
   const uint32_t TOYOTA_PARAM_LTA = 4UL << TOYOTA_PARAM_OFFSET;
-  const uint32_t TOYOTA_PARAM_ENABLE_DSU = 16UL << TOYOTA_PARAM_OFFSET;
 
 #ifdef ALLOW_DEBUG
   const uint32_t TOYOTA_PARAM_SECOC = 8UL << TOYOTA_PARAM_OFFSET;
@@ -384,7 +377,6 @@ static safety_config toyota_init(uint16_t param) {
   toyota_stock_longitudinal = GET_FLAG(param, TOYOTA_PARAM_STOCK_LONGITUDINAL);
   toyota_lta = GET_FLAG(param, TOYOTA_PARAM_LTA);
   toyota_dbc_eps_torque_factor = param & TOYOTA_EPS_FACTOR;
-  const bool toyota_enable_dsu = GET_FLAG(param, TOYOTA_PARAM_ENABLE_DSU);
 
   safety_config ret;
   if (toyota_secoc) {
