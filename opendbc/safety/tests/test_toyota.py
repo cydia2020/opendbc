@@ -94,13 +94,6 @@ class TestToyotaSafetyBase(common.CarSafetyTest, common.LongitudinalAccelSafetyT
           msg = libsafety_py.make_CANPacket(0x283, 0, bytes(dat))
           self.assertEqual(not bad and not stock_longitudinal, self._tx(msg))
 
-  def test_diagnostics(self, stock_longitudinal: bool = False):
-    for should_tx, msg in ((False, b"\x6D\x02\x3E\x00\x00\x00\x00\x00"),  # fwdCamera tester present
-                           (False, b"\x0F\x03\xAA\xAA\x00\x00\x00\x00"),  # non-tester present
-                           (True, b"\x0F\x02\x3E\x00\x00\x00\x00\x00")):
-      tester_present = libsafety_py.make_CANPacket(0x750, 0, msg)
-      self.assertEqual(should_tx and not stock_longitudinal, self._tx(tester_present))
-
   # Only allow LTA msgs with no actuation
   def test_lta_steer_cmd(self):
     for engaged, req, req2, torque_wind_down, angle in itertools.product([True, False],
@@ -128,20 +121,6 @@ class TestToyotaSafetyBase(common.CarSafetyTest, common.LongitudinalAccelSafetyT
       msg[0].data[7] = 0
       self.assertFalse(self._rx(msg))
       self.assertFalse(self.safety.get_controls_allowed())
-
-
-class TestToyotaSafetyEnableDSU(TestToyotaSafetyBase):
-
-  TX_MSGS = TOYOTA_COMMON_TX_MSGS + TOYOTA_COMMON_LONG_TX_MSGS + TOYOTA_DSU_MSGS
-
-  def setUp(self):
-    self.packer = CANPackerPanda("toyota_nodsu_pt_generated")
-    self.safety = libsafety_py.libsafety
-    self.safety.set_safety_hooks(CarParams.SafetyModel.toyota, self.EPS_SCALE | ToyotaSafetyFlags.ENABLE_DSU)
-    self.safety.init_tests()
-
-  def test_block_aeb(self, stock_longitudinal: bool = False):
-    super()._check_block_aeb(stock_longitudinal=stock_longitudinal)
 
 
 class TestToyotaSafetyTorque(TestToyotaSafetyBase, common.MotorTorqueSteeringSafetyTest, common.SteerRequestCutSafetyTest):
@@ -300,7 +279,7 @@ class TestToyotaStockLongitudinalBase(TestToyotaSafetyBase):
     super().test_diagnostics(stock_longitudinal=stock_longitudinal, ecu_disabled=ecu_disabled)
 
   def test_block_aeb(self, stock_longitudinal: bool = True):
-    super()._check_block_aeb(stock_longitudinal=stock_longitudinal)
+    super().test_block_aeb(stock_longitudinal=stock_longitudinal)
 
   def test_acc_cancel(self):
     """
