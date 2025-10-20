@@ -4,7 +4,7 @@ from opendbc.car import Bus, make_tester_present_msg, rate_limit, structs, ACCEL
 from opendbc.car.lateral import apply_meas_steer_torque_limits, apply_std_steer_angle_limits, common_fault_avoidance
 from opendbc.car.can_definitions import CanData
 from opendbc.car.carlog import carlog
-from opendbc.car.common.filter_simple import FirstOrderFilter
+from opendbc.car.common.filter_simple import FirstOrderFilter, HighPassFilter
 from opendbc.car.common.pid import PIDController
 from opendbc.car.secoc import add_mac, build_sync_mac
 from opendbc.car.interfaces import CarControllerBase
@@ -77,8 +77,8 @@ class CarController(CarControllerBase):
     # *** start long control state ***
     self.long_pid = get_long_tune(self.CP, self.params)
     self.aego = FirstOrderFilter(0.0, 0.25, DT_CTRL * 3)
-    self.pitch = FirstOrderFilter(0, 0.25, DT_CTRL)
-    self.pitch_slow = FirstOrderFilter(0, 1.5, DT_CTRL)
+    self.pitch = FirstOrderFilter(0, 0.5, DT_CTRL)
+    self.pitch_hp = HighPassFilter(0.0, 0.25, 1.5, DT_CTRL)
 
     self.accel = 0
     self.prev_accel = 0
@@ -88,6 +88,7 @@ class CarController(CarControllerBase):
 
     self.secoc_lka_message_counter = 0
     self.secoc_lta_message_counter = 0
+    self.secoc_acc_message_counter = 0
     self.secoc_prev_reset_counter = 0
 
   def update(self, CC, CS, now_nanos):
@@ -99,7 +100,7 @@ class CarController(CarControllerBase):
 
     if len(CC.orientationNED) == 3:
       self.pitch.update(CC.orientationNED[1])
-      self.pitch_slow.update(CC.orientationNED[1])
+      self.pitch_hp.update(CC.orientationNED[1])
 
     # *** control msgs ***
     can_sends = []
@@ -109,6 +110,7 @@ class CarController(CarControllerBase):
       if CS.secoc_synchronization['RESET_CNT'] != self.secoc_prev_reset_counter:
         self.secoc_lka_message_counter = 0
         self.secoc_lta_message_counter = 0
+        self.secoc_acc_message_counter = 0
         self.secoc_prev_reset_counter = CS.secoc_synchronization['RESET_CNT']
 
         expected_mac = build_sync_mac(self.secoc_key, int(CS.secoc_synchronization['TRIP_CNT']), int(CS.secoc_synchronization['RESET_CNT']))
@@ -243,12 +245,6 @@ class CarController(CarControllerBase):
             pcm_accel_cmd = rate_limit(pcm_accel_cmd, self.prev_accel, ACCEL_WINDDOWN_LIMIT, ACCEL_WINDUP_LIMIT)
           self.prev_accel = pcm_accel_cmd
 
-          # calculate amount of acceleration PCM should apply to reach target, given pitch.
-          # clipped to only include downhill angles, avoids erroneously unsetting PERMIT_BRAKING when stopping on uphills
-          accel_due_to_pitch = math.sin(min(self.pitch.x, 0.0)) * ACCELERATION_DUE_TO_GRAVITY
-          # TODO: on uphills this sometimes sets PERMIT_BRAKING low not considering the creep force
-          net_acceleration_request = pcm_accel_cmd + accel_due_to_pitch
-
           # GVC does not overshoot ego acceleration when starting from stop, but still has a similar delay
           if not self.CP.flags & ToyotaFlags.SECOC.value:
             a_ego_blended = float(np.interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo]))
@@ -263,9 +259,12 @@ class CarController(CarControllerBase):
           future_t = float(np.interp(CS.out.vEgo, [2., 5.], [0.25, 0.5]))
           a_ego_future = a_ego_blended + j_ego * future_t
 
-          if CC.longActive:
-            # constantly slowly unwind integral to recover from large temporary errors
-            self.long_pid.i -= ACCEL_PID_UNWIND * float(np.sign(self.long_pid.i))
+          if not stopping:
+            # Toyota's PCM slowly responds to changes in pitch. On change, we amplify our
+            # acceleration request to compensate for the undershoot and following overshoot
+            pitch_compensation = float(np.clip(math.sin(self.pitch_hp.x) * ACCELERATION_DUE_TO_GRAVITY,
+                                               -MAX_PITCH_COMPENSATION, MAX_PITCH_COMPENSATION))
+            pcm_accel_cmd += pitch_compensation
 
             error_future = pcm_accel_cmd - a_ego_future
 
@@ -284,18 +283,19 @@ class CarController(CarControllerBase):
           else:
             self.long_pid.reset()
 
-          # Along with rate limiting positive jerk above, this greatly improves gas response time
-          # Consider the net acceleration request that the PCM should be applying (pitch included)
-          net_acceleration_request_min = min(actuators.accel + accel_due_to_pitch, net_acceleration_request)
-          if net_acceleration_request_min < 0.2 or stopping or not CC.longActive:
-            self.permit_braking = True
-          elif net_acceleration_request_min > 0.3:
-            self.permit_braking = False
-
-          pcm_accel_cmd = float(np.clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX))
-
-        can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, actuators.accel, pcm_cancel_cmd, self.permit_braking, self.standstill_req and self.CP.carFingerprint not in NO_STOP_TIMER_CAR, self.lead or CS.out.vEgo < 12.,
+        main_accel_cmd = 0. if self.CP.flags & ToyotaFlags.SECOC.value else pcm_accel_cmd
+        can_sends.append(toyotacan.create_accel_command(self.packer, main_accel_cmd, actuators.accel, pcm_cancel_cmd, self.permit_braking, self.standstill_req and self.CP.carFingerprint not in NO_STOP_TIMER_CAR, self.lead or CS.out.vEgo < 12.,
                                                         CS.acc_type, fcw_alert, self.distance_button))
+        if self.CP.flags & ToyotaFlags.SECOC.value:
+          acc_cmd_2 = toyotacan.create_accel_command_2(self.packer, pcm_accel_cmd)
+          acc_cmd_2 = add_mac(self.secoc_key,
+                              int(CS.secoc_synchronization['TRIP_CNT']),
+                              int(CS.secoc_synchronization['RESET_CNT']),
+                              self.secoc_acc_message_counter,
+                              acc_cmd_2)
+          self.secoc_acc_message_counter += 1
+          can_sends.append(acc_cmd_2)
+
         self.accel = pcm_accel_cmd
 
     else:
