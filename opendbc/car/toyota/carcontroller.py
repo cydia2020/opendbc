@@ -2,16 +2,13 @@ import math
 import numpy as np
 from opendbc.car import Bus, make_tester_present_msg, rate_limit, structs, ACCELERATION_DUE_TO_GRAVITY, DT_CTRL
 from opendbc.car.lateral import apply_meas_steer_torque_limits, apply_std_steer_angle_limits, common_fault_avoidance
-from opendbc.car.can_definitions import CanData
 from opendbc.car.carlog import carlog
 from opendbc.car.common.filter_simple import FirstOrderFilter, HighPassFilter
 from opendbc.car.common.pid import PIDController
 from opendbc.car.secoc import add_mac, build_sync_mac
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.toyota import toyotacan
-from opendbc.car.toyota.values import CAR, STATIC_DSU_MSGS, NO_STOP_TIMER_CAR, TSS2_CAR, \
-                                        CarControllerParams, ToyotaFlags, \
-                                        UNSUPPORTED_DSU_CAR
+from opendbc.car.toyota.values import CAR, TSS2_CAR, UNSUPPORTED_DSU_CAR, CarControllerParams, ToyotaFlags
 from opendbc.can import CANPacker
 
 Ecu = structs.CarParams.Ecu
@@ -31,7 +28,7 @@ MAX_PITCH_COMPENSATION = 1.5  # m/s^2
 # LKA limits
 # EPS faults if you apply torque while the steering rate is above 100 deg/s for too long
 MAX_STEER_RATE = 100  # deg/s
-MAX_STEER_RATE_FRAMES = 18  # tx control frames needed before torque can be cut
+MAX_STEER_RATE_FRAMES = 17  # tx control frames needed before torque can be cut
 
 # EPS allows user torque above threshold for 50 frames before permanently faulting
 MAX_USER_TORQUE = 500
@@ -181,24 +178,6 @@ class CarController(CarControllerBase):
         self.secoc_lta_message_counter += 1
         can_sends.append(lta_steer_2)
 
-    # *** gas and brake ***
-
-    # resume requested, clear pending delay and set standstill_req to low
-    if CC.cruiseControl.resume:
-        self._resume_false_frame = None
-        self.standstill_req = False
-    # resume not pressed
-    else:
-        # start delay timer if needed
-        if self._resume_false_frame is None:
-            self._resume_false_frame = self.frame
-
-        # only set standstill_req after waiting 1 s
-        if (self.frame - self._resume_false_frame) >= 3. / DT_CTRL:
-            self.standstill_req = True
-        else:
-            self.standstill_req = False
-
     # handle UI messages
     fcw_alert = hud_control.visualAlert == VisualAlert.fcw
     steer_alert = hud_control.visualAlert == VisualAlert.steerRequired and not hud_control.enableVehicleBuzzer
@@ -214,7 +193,20 @@ class CarController(CarControllerBase):
       self.right_lane = hud_control.rightLaneVisible
 
 
+    # *** gas and brake ***
     if self.CP.openpilotLongitudinalControl:
+      # if user engages at a stop with foot on brake, PCM starts in a special cruise standstill mode. on resume press,
+      # brakes can take a while to ramp up causing a lurch forward. prevent resume press until planner wants to move.
+      # don't use CC.cruiseControl.resume since it is gated on CS.cruiseState.standstill which goes false for 3s after resume press
+      # whitelist hybrids as they do not have this issue and can stay stopped after resume press
+      if not self.CP.flags & ToyotaFlags.HYBRID.value:
+        should_resume = actuators.accel > 0
+        if should_resume:
+          self.standstill_req = False
+
+        if not should_resume and CS.out.cruiseState.standstill:
+          self.standstill_req = True
+
       if self.frame % 3 == 0:
         # Press distance button until we are at the correct bar length. Only change while enabled to avoid skipping startup popup
         if self.frame % 6 == 0 and self.CP.openpilotLongitudinalControl:
@@ -284,7 +276,7 @@ class CarController(CarControllerBase):
             self.long_pid.reset()
 
         main_accel_cmd = 0. if self.CP.flags & ToyotaFlags.SECOC.value else pcm_accel_cmd
-        can_sends.append(toyotacan.create_accel_command(self.packer, main_accel_cmd, actuators.accel, pcm_cancel_cmd, self.permit_braking, self.standstill_req and self.CP.carFingerprint not in NO_STOP_TIMER_CAR, self.lead or CS.out.vEgo < 12.,
+        can_sends.append(toyotacan.create_accel_command(self.packer, main_accel_cmd, actuators.accel, pcm_cancel_cmd, self.permit_braking, self.standstill_req, self.lead or CS.out.vEgo < 12.,
                                                         CS.acc_type, fcw_alert, self.distance_button))
         if self.CP.flags & ToyotaFlags.SECOC.value:
           acc_cmd_2 = toyotacan.create_accel_command_2(self.packer, pcm_accel_cmd)
@@ -315,14 +307,8 @@ class CarController(CarControllerBase):
                                                    CS.lda_right_lane, CS.sws_beeps, CS.lda_sa_toggle, alert_prompt,
                                                    alert_prompt_repeat, alert_immediate, self.CP.enableDsu))
 
-    if self.CP.enableDsu or self.CP.flags & ToyotaFlags.DISABLE_RADAR.value:
-      can_sends.append(toyotacan.create_fcw_command(self.packer, fcw_alert))
-
-    # *** static msgs ***
-    if self.CP.enableDsu:
-      for addr, cars, bus, fr_step, vl in STATIC_DSU_MSGS:
-        if self.frame % fr_step == 0 and self.CP.carFingerprint in cars:
-          can_sends.append(CanData(addr, vl, bus))
+      if (self.frame % 100 == 0) and self.CP.flags & ToyotaFlags.DISABLE_RADAR.value:
+        can_sends.append(toyotacan.create_fcw_command(self.packer, fcw_alert))
 
     # keep radar disabled
     if self.frame % 20 == 0 and self.CP.flags & ToyotaFlags.DISABLE_RADAR.value:
