@@ -51,6 +51,7 @@ class CarState(CarStateBase):
     # Need to apply an offset as soon as the steering angle measurements are both received
     self.accurate_steer_angle_seen = False
     self.angle_offset = FirstOrderFilter(None, 60.0, DT_CTRL, initialized=False)
+    self.secondary_steer_lost = False
 
     self.lkas_button = 0
     self.distance_button = 0
@@ -104,20 +105,24 @@ class CarState(CarStateBase):
 
     ret.steeringAngleDeg = cp.vl["STEER_ANGLE_SENSOR"]["STEER_ANGLE"] + cp.vl["STEER_ANGLE_SENSOR"]["STEER_FRACTION"]
     ret.steeringRateDeg = cp.vl["STEER_ANGLE_SENSOR"]["STEER_RATE"]
-    torque_sensor_angle_deg = cp.vl["STEER_TORQUE_SENSOR"]["STEER_ANGLE"]
+    secondary_steer_fault = False
+    if self.CP.flags & ToyotaFlags.SECONDARY_STEER_ANGLE:
+      secondary_steer_fault = self._update_secondary_steering(cp, ret)
+    else:
+      torque_sensor_angle_deg = cp.vl["STEER_TORQUE_SENSOR"]["STEER_ANGLE"]
 
-    # On some cars, the angle measurement is non-zero while initializing
-    if abs(torque_sensor_angle_deg) > 1e-3 and not bool(cp.vl["STEER_TORQUE_SENSOR"]["STEER_ANGLE_INITIALIZING"]):
-      self.accurate_steer_angle_seen = True
+      # On some cars, the angle measurement is non-zero while initializing
+      if abs(torque_sensor_angle_deg) > 1e-3 and not bool(cp.vl["STEER_TORQUE_SENSOR"]["STEER_ANGLE_INITIALIZING"]):
+        self.accurate_steer_angle_seen = True
 
-    if self.accurate_steer_angle_seen:
-      # Offset seems to be invalid for large steering angles and high angle rates
-      if abs(ret.steeringAngleDeg) < 90 and abs(ret.steeringRateDeg) < 100 and cp.can_valid:
-        self.angle_offset.update(torque_sensor_angle_deg - ret.steeringAngleDeg)
+      if self.accurate_steer_angle_seen:
+        # Offset seems to be invalid for large steering angles and high angle rates
+        if abs(ret.steeringAngleDeg) < 90 and abs(ret.steeringRateDeg) < 100 and cp.can_valid:
+          self.angle_offset.update(torque_sensor_angle_deg - ret.steeringAngleDeg)
 
-      if self.angle_offset.initialized:
-        ret.steeringAngleOffsetDeg = self.angle_offset.x
-        ret.steeringAngleDeg = torque_sensor_angle_deg - self.angle_offset.x
+        if self.angle_offset.initialized:
+          ret.steeringAngleOffsetDeg = self.angle_offset.x
+          ret.steeringAngleDeg = torque_sensor_angle_deg - self.angle_offset.x
 
     ret.gearShifter = self.parse_gear_shifter(self.shifter_values.get(can_gear, None))
     ret.leftBlinker = cp.vl["BLINKERS_STATE"]["TURN_SIGNALS"] == 1
@@ -129,7 +134,7 @@ class CarState(CarStateBase):
     ret.steeringPressed = abs(ret.steeringTorque) > STEER_THRESHOLD
 
     # Check EPS LKA/LTA fault status
-    ret.steerFaultTemporary = cp.vl["EPS_STATUS"]["LKA_STATE"] in TEMP_STEER_FAULTS
+    ret.steerFaultTemporary = secondary_steer_fault or cp.vl["EPS_STATUS"]["LKA_STATE"] in TEMP_STEER_FAULTS
     ret.steerFaultPermanent = cp.vl["EPS_STATUS"]["LKA_STATE"] in PERM_STEER_FAULTS
 
     if self.CP.steerControlType == SteerControlType.angle:
@@ -215,6 +220,36 @@ class CarState(CarStateBase):
       self._update_private_telemetry(cp, ret)
     return ret
 
+  def _update_secondary_steering(self, cp, ret):
+    # Keep the factory steering rate, torque and EPS faults. The high-resolution
+    # sensor replaces only the angle after the factory-referenced offset exists.
+    msg = cp.dbc.name_to_msg["SECONDARY_STEER_ANGLE"]
+    checksum = msg.sigs.get("CHECKSUM")
+    angle = _fresh_signal(cp, msg.name, "STEER_ANGLE", 0.1)
+    valid = checksum is not None and checksum.calc_checksum is not None and angle is not None
+    if not valid:
+      # Once used, do not automatically switch back to this sensor after loss:
+      # a restarted sensor may have a different zero. Require card restart.
+      self.secondary_steer_lost |= self.angle_offset.initialized
+      return True
+    if self.secondary_steer_lost:
+      return True
+
+    self.accurate_steer_angle_seen = True  # a valid zero is a real measurement
+    factory_fresh = all(_fresh_signal(cp, "STEER_ANGLE_SENSOR", sig, 0.1) is not None
+                        for sig in ("STEER_ANGLE", "STEER_FRACTION", "STEER_RATE"))
+    if not factory_fresh:
+      self.secondary_steer_lost |= self.angle_offset.initialized
+      return True
+    if abs(ret.steeringAngleDeg) < 90 and abs(ret.steeringRateDeg) < 100 and cp.can_valid:
+      self.angle_offset.update(angle - ret.steeringAngleDeg)
+    if not self.angle_offset.initialized:
+      return True
+
+    ret.steeringAngleOffsetDeg = self.angle_offset.x
+    ret.steeringAngleDeg = angle - self.angle_offset.x
+    return False
+
   @staticmethod
   def _update_private_telemetry(cp, ret):
     acc_brake = _fresh_signal(cp, "ESP_CONTROL", "BRAKE_LIGHTS_ACC", 0.25)
@@ -243,6 +278,10 @@ class CarState(CarStateBase):
     pt_messages = [
       ("BLINKERS_STATE", float('nan')),
     ]
+    if CP.flags & ToyotaFlags.SECONDARY_STEER_ANGLE:
+      # Required input on this private platform. Learn the actual frequency;
+      # the angle selection additionally checks the accepted sample's age.
+      pt_messages.append(("SECONDARY_STEER_ANGLE", 0))
 
     return {
       Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], pt_messages, 0),

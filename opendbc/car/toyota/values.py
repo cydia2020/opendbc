@@ -77,6 +77,8 @@ class ToyotaFlags(IntFlag):
 
   # Private TSS-P Prius: factory DSU is on the camera-side network.
   DSU_REROUTED = 1 << 13
+  # Private high-resolution steering sensor.
+  SECONDARY_STEER_ANGLE = 1 << 12
 
   # deprecated flags
   # these cars are speculated to allow stop and go when the DSU is unplugged
@@ -237,6 +239,7 @@ class CAR(Platforms):
     ],
     CarSpecs(wheelbase=2.7, steerRatio=15.74, tireStiffnessFactor=0.6371),
     dbc_dict('toyota_nodsu_pt_generated', 'toyota_adas'),
+    flags=ToyotaFlags.SECONDARY_STEER_ANGLE,
   )
   TOYOTA_PRIUS_V = PlatformConfig(
     [ToyotaCarDocs("Toyota Prius v 2017", "Toyota Safety Sense P", min_enable_speed=MIN_ACC_SPEED)],

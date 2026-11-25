@@ -1,6 +1,11 @@
 CM_ "IMPORT _toyota_2017.dbc";
 CM_ "IMPORT _toyota_adas_standard.dbc";
 
+BO_ 35 SECONDARY_STEER_ANGLE: 8 XXX
+ SG_ STEER_ANGLE : 7|32@0- (0.00485601697,0) [-500|500] "deg" XXX
+ SG_ STEER_RATE : 32|24@1- (0.00485601697,0) [-40735.3|40735.3] "deg/s" XXX
+ SG_ CHECKSUM : 63|8@0+ (1,0) [0|255] "" XXX
+
 BO_ 401 STEERING_LTA: 8 XXX
  SG_ CHECKSUM : 63|8@0+ (1,0) [0|255] "" XXX
  SG_ SETME_X3 : 29|2@0+ (1,0) [0|3] "" XXX
