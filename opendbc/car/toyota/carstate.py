@@ -67,7 +67,9 @@ class CarState(CarStateBase):
     cp_cam = can_parsers[Bus.cam]
 
     ret = structs.CarState()
-    cp_acc = cp_cam if (self.CP.flags & ToyotaFlags.TSS2) and not (self.CP.flags & ToyotaFlags.RADAR_ACC) else cp
+    dsu_rerouted = bool(self.CP.flags & ToyotaFlags.DSU_REROUTED)
+    camera_acc = dsu_rerouted or bool(self.CP.flags & ToyotaFlags.TSS2 and not self.CP.flags & ToyotaFlags.RADAR_ACC)
+    cp_acc = cp_cam if camera_acc else cp
 
     if not self.CP.flags & ToyotaFlags.SECOC.value:
       self.gvc = cp.vl["VSC1S07"]["GVC"]
@@ -157,8 +159,10 @@ class CarState(CarStateBase):
       conversion_factor = CV.KPH_TO_MS if is_metric else CV.MPH_TO_MS
       ret.cruiseState.speedCluster = cluster_set_speed * conversion_factor
 
-    if self.CP.flags & ToyotaFlags.TSS2 and not self.CP.flags & ToyotaFlags.DISABLE_RADAR.value:
-      self.acc_type = cp_acc.vl["ACC_CONTROL"]["ACC_TYPE"]
+    if (dsu_rerouted or self.CP.flags & ToyotaFlags.TSS2) and not self.CP.flags & ToyotaFlags.DISABLE_RADAR.value:
+      # Preserve the original private fork's TSS-P ACC type.
+      if not dsu_rerouted:
+        self.acc_type = cp_acc.vl["ACC_CONTROL"]["ACC_TYPE"]
       ret.stockFcw = bool(cp_acc.vl["PCS_HUD"]["FCW"])
 
     # some TSS2 cars have low speed lockout permanently set, so ignore on those cars

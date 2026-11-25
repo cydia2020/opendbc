@@ -9,6 +9,9 @@ from opendbc.car.interfaces import CarInterfaceBase
 
 SteerControlType = structs.CarParams.SteerControlType
 
+# Private fork configuration: only for the physically rerouted Prius.
+PRIUS_DSU_REROUTED = True
+
 
 class CarInterface(CarInterfaceBase):
   CarState = CarState
@@ -59,6 +62,8 @@ class CarInterface(CarInterfaceBase):
 
     if candidate == CAR.TOYOTA_PRIUS:
       stop_and_go = True
+      if PRIUS_DSU_REROUTED and not docs:
+        ret.flags |= ToyotaFlags.DSU_REROUTED.value
       # Only give steer angle deadzone to for bad angle sensor prius
       for fw in car_fw:
         if fw.ecu == "eps" and not fw.fwVersion == b'8965B47060\x00\x00\x00\x00\x00\x00':
@@ -99,11 +104,12 @@ class CarInterface(CarInterfaceBase):
 
     # openpilot longitudinal enabled by default:
     #  - TSS2 cars with camera sending ACC_CONTROL where we can block it
+    #  - private TSS-P Prius with factory DSU routed to camera-side CAN
     # openpilot longitudinal behind alpha long toggle:
     #  - TSS2 radar ACC cars (disables radar)
 
     ret.openpilotLongitudinalControl = ((bool(ret.flags & ToyotaFlags.TSS2) and not (ret.flags & ToyotaFlags.RADAR_ACC)) or
-                                        bool(ret.flags & ToyotaFlags.DISABLE_RADAR.value))
+                                        bool(ret.flags & (ToyotaFlags.DISABLE_RADAR | ToyotaFlags.DSU_REROUTED)))
 
     ret.autoResumeSng = ret.openpilotLongitudinalControl
 

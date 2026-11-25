@@ -75,6 +75,9 @@ class ToyotaFlags(IntFlag):
   RAISED_ACCEL_LIMIT = 1024
   SECOC = 2048
 
+  # Private TSS-P Prius: factory DSU is on the camera-side network.
+  DSU_REROUTED = 1 << 13
+
   # deprecated flags
   # these cars are speculated to allow stop and go when the DSU is unplugged
   SNG_WITHOUT_DSU_DEPRECATED = 512
