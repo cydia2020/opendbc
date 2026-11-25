@@ -1,9 +1,13 @@
+import math
+
+from opendbc.can.dbc import DBC as CanDBC
 from opendbc.car import Bus, structs, get_safety_config, uds
+from opendbc.car.carlog import carlog
 from opendbc.car.toyota.carstate import CarState
 from opendbc.car.toyota.carcontroller import CarController
 from opendbc.car.toyota.radar_interface import RadarInterface
 from opendbc.car.toyota.values import Ecu, CAR, DBC, ToyotaFlags, CarControllerParams, MIN_ACC_SPEED, \
-                                                  EPS_SCALE, ToyotaSafetyFlags
+                                                  EPS_SCALE, ToyotaSafetyFlags, PRIUS_LEGACY_MASS_KG
 from opendbc.car.disable_ecu import disable_ecu
 from opendbc.car.interfaces import CarInterfaceBase
 
@@ -110,6 +114,23 @@ class CarInterface(CarInterfaceBase):
 
     ret.openpilotLongitudinalControl = ((bool(ret.flags & ToyotaFlags.TSS2) and not (ret.flags & ToyotaFlags.RADAR_ACC)) or
                                         bool(ret.flags & (ToyotaFlags.DISABLE_RADAR | ToyotaFlags.DSU_REROUTED)))
+
+    # Select both parts of the historical tune together, never two integrators.
+    # Do not change the safety model, safety parameters or long availability here.
+    if (candidate == CAR.TOYOTA_PRIUS and ret.openpilotLongitudinalControl and
+        ret.flags & ToyotaFlags.DSU_REROUTED and not ret.flags & ToyotaFlags.SECOC and
+        PRIUS_LEGACY_MASS_KG is not None):
+      if not math.isfinite(PRIUS_LEGACY_MASS_KG) or PRIUS_LEGACY_MASS_KG <= 0:
+        raise ValueError("PRIUS_LEGACY_MASS_KG must be positive and finite")
+      dbc = CanDBC(DBC[candidate][Bus.pt])
+      acc = dbc.name_to_msg.get("ACC_CONTROL")
+      pcm = dbc.name_to_msg.get("PCM_CRUISE")
+      if acc is None or "ACCEL_CMD_ALT" not in acc.sigs or pcm is None or "NEUTRAL_FORCE" not in pcm.sigs:
+        carlog.warning("Prius legacy tune not enabled: required DBC signals missing")
+      else:
+        ret.flags |= ToyotaFlags.PRIUS_LEGACY_LONG.value
+        ret.longitudinalTuning.kiBP = [0., 15.]
+        ret.longitudinalTuning.kiV = [1.6, 1.2]
 
     ret.autoResumeSng = ret.openpilotLongitudinalControl
 

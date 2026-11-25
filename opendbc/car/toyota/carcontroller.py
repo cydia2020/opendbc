@@ -8,7 +8,7 @@ from opendbc.car.common.pid import PIDController
 from opendbc.car.secoc import add_mac, build_sync_mac
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.toyota import toyotacan
-from opendbc.car.toyota.values import CAR, CarControllerParams, ToyotaFlags
+from opendbc.car.toyota.values import CAR, CarControllerParams, ToyotaFlags, PRIUS_LEGACY_MASS_KG
 from opendbc.can import CANPacker
 
 Ecu = structs.CarParams.Ecu
@@ -23,6 +23,10 @@ ACCEL_WINDDOWN_LIMIT = -4.0 * DT_CTRL * 3  # m/s^2 / frame
 ACCEL_PID_UNWIND = 0.03 * DT_CTRL * 3  # m/s^2 / frame
 
 MAX_PITCH_COMPENSATION = 1.5  # m/s^2
+
+# Historical PCM neutral-force latch threshold, in m/s and m/s^2.
+PRIUS_COMP_THRESHOLD_BP = [0., 20., 32.]
+PRIUS_COMP_THRESHOLD_V = [-0.2, -0.2, -0.05]
 
 # LKA limits
 # EPS faults if you apply torque while the steering rate is above 100 deg/s for too long
@@ -66,6 +70,9 @@ class CarController(CarControllerBase):
 
     self.accel = 0
     self.prev_accel = 0
+    self.prohibit_neg_calculation = True
+    self.pcm_accel_compensation = 0.0
+    self.prius_accel_net = 0.0
     # *** end long control state ***
 
     self.packer = CANPacker(dbc_names[Bus.pt])
@@ -74,6 +81,49 @@ class CarController(CarControllerBase):
     self.secoc_lta_message_counter = 0
     self.secoc_acc_message_counter = 0
     self.secoc_prev_reset_counter = 0
+
+  def _update_prius_long(self, CC, CS, stopping, fcw_alert, pcm_cancel_cmd):
+    # The integral feedback runs in LongControl for this tune. Do not run the
+    # Toyota inner integrator or add pitch compensation on top of the PCM force.
+    self.long_pid.reset()
+    active = CC.longActive and not pcm_cancel_cmd and CS.out.canValid
+    if not active:
+      self.prohibit_neg_calculation = True
+
+    force = CS.out.pcmNeutralForce
+    force_valid = CS.out.pcmNeutralForceValid and math.isfinite(force) and CS.out.canValid
+    # Preserve the legacy ordering: a valid sample may clear the latch even
+    # during an inactive cycle. A valid zero is different from missing data.
+    neutral_accel = force / PRIUS_LEGACY_MASS_KG if force_valid else 0.0
+    force_valid = force_valid and math.isfinite(neutral_accel)
+    threshold = np.interp(CS.out.vEgo, PRIUS_COMP_THRESHOLD_BP, PRIUS_COMP_THRESHOLD_V)
+    if force_valid and neutral_accel > threshold:
+      self.prohibit_neg_calculation = False
+
+    request = CC.actuators.accel
+    if not active or not math.isfinite(request):
+      self.pcm_accel_compensation = 0.0
+      self.prius_accel_net = 0.0
+      return 0.0, 0.0
+    request = float(np.clip(request, self.params.ACCEL_MIN, self.params.ACCEL_MAX))
+
+    # Never add positive propulsion while braking, stopping or responding to
+    # a collision warning. Keep negative requests intact and braking permitted.
+    inhibit_positive = (stopping or CS.out.brakePressed or CS.out.gasPressed or
+                        CS.out.stockAeb or CS.out.stockFcw or fcw_alert)
+    if inhibit_positive:
+      request = min(request, 0.0)
+    use_comp = (force_valid and not self.prohibit_neg_calculation and request > 0.0 and
+                not CS.out.cruiseState.standstill and not inhibit_positive)
+    self.pcm_accel_compensation = neutral_accel if use_comp else 0.0
+    candidate = request + self.pcm_accel_compensation
+    if request > 0.0:
+      # Cap positive output growth on each channel using the upstream increment.
+      # Do not let the compensation reverse the sign or delay a braking request.
+      candidate = min(max(0.0, candidate), max(0.0, self.accel) + ACCEL_WINDUP_LIMIT)
+      request = min(request, max(0.0, self.prius_accel_net) + ACCEL_WINDUP_LIMIT)
+    self.prius_accel_net = request
+    return float(np.clip(candidate, self.params.ACCEL_MIN, self.params.ACCEL_MAX)), request
 
   def update(self, CC, CS, now_nanos):
     actuators = CC.actuators
@@ -193,65 +243,71 @@ class CarController(CarControllerBase):
           else:
             self.distance_button = 0
 
-        # internal PCM gas command can get stuck unwinding from negative accel so we apply a generous rate limit
-        pcm_accel_cmd = actuators.accel
-        if CC.longActive:
-          pcm_accel_cmd = rate_limit(pcm_accel_cmd, self.prev_accel, ACCEL_WINDDOWN_LIMIT, ACCEL_WINDUP_LIMIT)
-        self.prev_accel = pcm_accel_cmd
-
-        # calculate amount of acceleration PCM should apply to reach target, given pitch.
-        # clipped to only include downhill angles, avoids erroneously unsetting PERMIT_BRAKING when stopping on uphills
-        accel_due_to_pitch = math.sin(min(self.pitch.x, 0.0)) * ACCELERATION_DUE_TO_GRAVITY
-        # TODO: on uphills this sometimes sets PERMIT_BRAKING low not considering the creep force
-        net_acceleration_request = pcm_accel_cmd + accel_due_to_pitch
-
-        # GVC does not overshoot ego acceleration when starting from stop, but still has a similar delay
-        if not self.CP.flags & ToyotaFlags.SECOC.value:
-          a_ego_blended = float(np.interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo]))
-        else:
-          a_ego_blended = CS.out.aEgo
-
-        # wind down integral when approaching target for step changes and smooth ramps to reduce overshoot
-        prev_aego = self.aego.x
-        self.aego.update(a_ego_blended)
-        j_ego = (self.aego.x - prev_aego) / (DT_CTRL * 3)
-
-        future_t = float(np.interp(CS.out.vEgo, [2., 5.], [0.25, 0.5]))
-        a_ego_future = a_ego_blended + j_ego * future_t
-
-        if CC.longActive:
-          # constantly slowly unwind integral to recover from large temporary errors
-          self.long_pid.i -= ACCEL_PID_UNWIND * float(np.sign(self.long_pid.i))
-
-          error_future = pcm_accel_cmd - a_ego_future
-
-          if not stopping:
-            # Toyota's PCM slowly responds to changes in pitch. On change, we amplify our
-            # acceleration request to compensate for the undershoot and following overshoot
-            pitch_compensation = float(np.clip(math.sin(self.pitch_hp.x) * ACCELERATION_DUE_TO_GRAVITY,
-                                               -MAX_PITCH_COMPENSATION, MAX_PITCH_COMPENSATION))
-            pcm_accel_cmd += pitch_compensation
-
-          pcm_accel_cmd = self.long_pid.update(error_future,
-                                               speed=CS.out.vEgo,
-                                               feedforward=pcm_accel_cmd,
-                                               freeze_integrator=actuators.longControlState != LongCtrlState.pid)
-        else:
-          self.long_pid.reset()
-
-        # Along with rate limiting positive jerk above, this greatly improves gas response time
-        # Consider the net acceleration request that the PCM should be applying (pitch included)
-        net_acceleration_request_min = min(actuators.accel + accel_due_to_pitch, net_acceleration_request)
-        if net_acceleration_request_min < 0.2 or stopping or not CC.longActive:
+        accel_net = None
+        if self.CP.flags & ToyotaFlags.PRIUS_LEGACY_LONG:
+          pcm_accel_cmd, accel_net = self._update_prius_long(CC, CS, stopping, fcw_alert, pcm_cancel_cmd)
           self.permit_braking = True
-        elif net_acceleration_request_min > 0.3:
-          self.permit_braking = False
+          self.prev_accel = pcm_accel_cmd
+        else:
+          # internal PCM gas command can get stuck unwinding from negative accel so we apply a generous rate limit
+          pcm_accel_cmd = actuators.accel
+          if CC.longActive:
+            pcm_accel_cmd = rate_limit(pcm_accel_cmd, self.prev_accel, ACCEL_WINDDOWN_LIMIT, ACCEL_WINDUP_LIMIT)
+          self.prev_accel = pcm_accel_cmd
 
-        pcm_accel_cmd = float(np.clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX))
+          # calculate amount of acceleration PCM should apply to reach target, given pitch.
+          # clipped to only include downhill angles, avoids erroneously unsetting PERMIT_BRAKING when stopping on uphills
+          accel_due_to_pitch = math.sin(min(self.pitch.x, 0.0)) * ACCELERATION_DUE_TO_GRAVITY
+          # TODO: on uphills this sometimes sets PERMIT_BRAKING low not considering the creep force
+          net_acceleration_request = pcm_accel_cmd + accel_due_to_pitch
+
+          # GVC does not overshoot ego acceleration when starting from stop, but still has a similar delay
+          if not self.CP.flags & ToyotaFlags.SECOC.value:
+            a_ego_blended = float(np.interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo]))
+          else:
+            a_ego_blended = CS.out.aEgo
+
+          # wind down integral when approaching target for step changes and smooth ramps to reduce overshoot
+          prev_aego = self.aego.x
+          self.aego.update(a_ego_blended)
+          j_ego = (self.aego.x - prev_aego) / (DT_CTRL * 3)
+
+          future_t = float(np.interp(CS.out.vEgo, [2., 5.], [0.25, 0.5]))
+          a_ego_future = a_ego_blended + j_ego * future_t
+
+          if CC.longActive:
+            # constantly slowly unwind integral to recover from large temporary errors
+            self.long_pid.i -= ACCEL_PID_UNWIND * float(np.sign(self.long_pid.i))
+
+            error_future = pcm_accel_cmd - a_ego_future
+
+            if not stopping:
+              # Toyota's PCM slowly responds to changes in pitch. On change, we amplify our
+              # acceleration request to compensate for the undershoot and following overshoot
+              pitch_compensation = float(np.clip(math.sin(self.pitch_hp.x) * ACCELERATION_DUE_TO_GRAVITY,
+                                                 -MAX_PITCH_COMPENSATION, MAX_PITCH_COMPENSATION))
+              pcm_accel_cmd += pitch_compensation
+
+            pcm_accel_cmd = self.long_pid.update(error_future,
+                                                 speed=CS.out.vEgo,
+                                                 feedforward=pcm_accel_cmd,
+                                                 freeze_integrator=actuators.longControlState != LongCtrlState.pid)
+          else:
+            self.long_pid.reset()
+
+          # Along with rate limiting positive jerk above, this greatly improves gas response time
+          # Consider the net acceleration request that the PCM should be applying (pitch included)
+          net_acceleration_request_min = min(actuators.accel + accel_due_to_pitch, net_acceleration_request)
+          if net_acceleration_request_min < 0.2 or stopping or not CC.longActive:
+            self.permit_braking = True
+          elif net_acceleration_request_min > 0.3:
+            self.permit_braking = False
+
+          pcm_accel_cmd = float(np.clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX))
 
         main_accel_cmd = 0. if self.CP.flags & ToyotaFlags.SECOC.value else pcm_accel_cmd
         can_sends.append(toyotacan.create_accel_command(self.packer, main_accel_cmd, pcm_cancel_cmd, self.permit_braking, self.standstill_req, lead,
-                                                        CS.acc_type, fcw_alert, self.distance_button))
+                                                        CS.acc_type, fcw_alert, self.distance_button, accel_net=accel_net))
         if self.CP.flags & ToyotaFlags.SECOC.value:
           acc_cmd_2 = toyotacan.create_accel_command_2(self.packer, pcm_accel_cmd)
           acc_cmd_2 = add_mac(self.secoc_key,

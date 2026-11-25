@@ -65,6 +65,7 @@ class ToyotaFlags(IntFlag):
   DISABLE_RADAR = 4
 
   # Static flags
+  PRIUS_LEGACY_LONG = 1 << 14  # explicitly configured private Prius tune
   TSS2 = 8
   NO_DSU = 16
   UNSUPPORTED_DSU = 32
@@ -85,6 +86,9 @@ class ToyotaFlags(IntFlag):
   SNG_WITHOUT_DSU_DEPRECATED = 512
   # no resume button press required
   NO_STOP_TIMER_DEPRECATED = 256
+
+
+PRIUS_LEGACY_MASS_KG: 1375
 
 
 def dbc_dict(pt, radar):
