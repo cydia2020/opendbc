@@ -180,6 +180,8 @@ struct CarState {
   regenBraking @45 :Bool; # this is user pedal only
   parkingBrake @39 :Bool;
   brakeHoldActive @38 :Bool;
+  brakeLights @19 :Bool;
+  brakeLightsValid @62 :Bool;
 
   # steering wheel
   steeringAngleDeg @7 :Float32;
@@ -228,6 +230,12 @@ struct CarState {
 
   fuelGauge @41 :Float32; # battery or fuel tank level from [0.0, 1.0]
   charging @43 :Bool;
+
+  # Private fork display and replay telemetry.
+  meterBrightness @63 :Float32; # percent
+  meterBrightnessValid @64 :Bool;
+  pcmNeutralForce @65 :Float32; # PCM native force; confirm units in DBC
+  pcmNeutralForceValid @66 :Bool;
 
   struct WheelSpeeds {
     # optional wheel speeds
@@ -288,7 +296,6 @@ struct CarState {
     errors @0 :List(OnroadEventDEPRECATED.EventName);
     gas @3 :Float32;
     brake @5 :Float32;
-    brakeLights @19 :Bool;
     steeringRateLimited @29 :Bool;
     canMonoTimes @12: List(UInt64);
     canRcvTimeout @49 :Bool;

@@ -1,4 +1,5 @@
 import copy
+import math
 
 from opendbc.can import CANDefine, CANParser
 from opendbc.car import Bus, DT_CTRL, create_button_events, structs
@@ -20,6 +21,16 @@ TEMP_STEER_FAULTS = (0, 9, 11, 21, 25)
 # - lka/lta msg drop out: 3 (recoverable)
 # - prolonged high driver torque: 17 (permanent)
 PERM_STEER_FAULTS = (3, 17)
+
+
+def _fresh_signal(cp, message, signal, max_age_s):
+  # Use the parser's CAN/replay clock and only read registered signals.
+  timestamp = cp.ts_nanos.get(message, {}).get(signal, 0)
+  age = cp._last_update_nanos - timestamp
+  if timestamp <= 0 or not 0 <= age <= max_age_s * 1e9:
+    return None
+  value = cp.vl.get(message, {}).get(signal)
+  return value if value is not None and math.isfinite(value) else None
 
 
 class CarState(CarStateBase):
@@ -196,7 +207,32 @@ class CarState(CarStateBase):
         buttonEvents += create_button_events(self.distance_button, prev_distance_button, {1: ButtonType.gapAdjustCruise})
 
     ret.buttonEvents = buttonEvents
+    if self.CP.carFingerprint == CAR.TOYOTA_PRIUS:
+      self._update_private_telemetry(cp, ret)
     return ret
+
+  @staticmethod
+  def _update_private_telemetry(cp, ret):
+    acc_brake = _fresh_signal(cp, "ESP_CONTROL", "BRAKE_LIGHTS_ACC", 0.25)
+    pedal_brake = _fresh_signal(cp, "BRAKE_MODULE", "BRAKE_PRESSED", 0.25)
+    if acc_brake is not None and pedal_brake is not None:
+      ret.brakeLights = bool(acc_brake or pedal_brake)
+      ret.brakeLightsValid = True
+
+    dimmed = _fresh_signal(cp, "BODY_CONTROL_STATE", "METER_DIMMED", 2.0)
+    slider = _fresh_signal(cp, "BODY_CONTROL_STATE_2", "METER_SLIDER_BRIGHTNESS_PCT", 2.0)
+    low = _fresh_signal(cp, "BODY_CONTROL_STATE_2", "METER_SLIDER_LOW_BRIGHTNESS", 2.0)
+    if dimmed == 1 and slider is not None and 0 <= slider <= 100:
+      ret.meterBrightness = slider * 0.5
+      ret.meterBrightnessValid = True
+    elif dimmed == 0 and low in (0, 1):
+      ret.meterBrightness = 1.0 if low else 100.0
+      ret.meterBrightnessValid = True
+
+    force = _fresh_signal(cp, "PCM_CRUISE", "NEUTRAL_FORCE", 0.25)
+    if force is not None:
+      ret.pcmNeutralForce = force
+      ret.pcmNeutralForceValid = True
 
   @staticmethod
   def get_can_parsers(CP):
