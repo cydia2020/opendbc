@@ -128,7 +128,7 @@ class CarController(CarControllerBase):
       candidate = min(max(0.0, candidate), max(0.0, self.accel) + ACCEL_WINDUP_LIMIT)
       request = min(request, max(0.0, self.prius_accel_net) + ACCEL_WINDUP_LIMIT)
     self.prius_accel_net = request
-    return float(np.clip(candidate, self.params.ACCEL_MIN, self.params.ACCEL_MAX)), request
+    return float(np.clip(candidate, self.params.ACCEL_MIN, self.params.ACCEL_MAX)), CC.actuators.accel
 
   def update(self, CC, CS, now_nanos):
     actuators = CC.actuators
