@@ -184,7 +184,6 @@ class CarState(CarStateBase):
     ret.cruiseState.enabled = bool(cp.vl["PCM_CRUISE"]["CRUISE_ACTIVE"])
     ret.cruiseState.nonAdaptive = pcm_acc_status in (1, 2, 3, 4, 5, 6)
 
-    ret.genericToggle = bool(cp.vl["LIGHT_STALK"]["AUTO_HIGH_BEAM"])
     ret.espDisabled = cp.vl["ESP_CONTROL"]["TC_DISABLED"] != 0
 
     if self.CP.flags & ToyotaFlags.HAS_BSM:
@@ -198,7 +197,7 @@ class CarState(CarStateBase):
       self.pcm_follow_distance = cp.vl["PCM_CRUISE_2"]["PCM_FOLLOW_DISTANCE"]
 
     buttonEvents = []
-    if self.CP.flags & ToyotaFlags.TSS2:
+    if dsu_rerouted or self.CP.flags & ToyotaFlags.TSS2:
       # lkas button is wired to the camera
       prev_lkas_button = self.lkas_button
       self.lkas_button = cp_cam.vl["LKAS_HUD"]["LDA_ON_MESSAGE"]
@@ -216,8 +215,7 @@ class CarState(CarStateBase):
         buttonEvents += create_button_events(self.distance_button, prev_distance_button, {1: ButtonType.gapAdjustCruise})
 
     ret.buttonEvents = buttonEvents
-    if self.CP.carFingerprint == CAR.TOYOTA_PRIUS:
-      self._update_private_telemetry(cp, ret)
+    self._update_private_telemetry(cp, ret)
     return ret
 
   def _update_secondary_steering(self, cp, ret):
