@@ -349,17 +349,32 @@ class CarController(CarControllerBase):
 
       if self.CP.carFingerprint == CAR.TOYOTA_PRIUS:
         audible = hud_control.audibleAlert
-        beep = PRIUS_SUPPLEMENTARY_BUZZER and audible in (AudibleAlert.prompt, AudibleAlert.promptDistracted)
-        repeat = PRIUS_SUPPLEMENTARY_BUZZER and audible in (AudibleAlert.promptRepeat, AudibleAlert.warningSoft,
-                                                            AudibleAlert.warningImmediate)
-        dash_alert = (beep, repeat, hud_control.leftLaneDepart, hud_control.rightLaneDepart)
+        vehicle_audio = hud_control.enableVehicleBuzzer
+        beep = (PRIUS_SUPPLEMENTARY_BUZZER or vehicle_audio) and audible in (AudibleAlert.prompt, AudibleAlert.promptDistracted)
+        repeat = (PRIUS_SUPPLEMENTARY_BUZZER or vehicle_audio) and audible in (AudibleAlert.promptRepeat, AudibleAlert.warningSoft,
+                                                                              AudibleAlert.warningImmediate)
+        # Restore the original Prius LDA urgency levels. The FCW indication
+        # stays distinct from a steering takeover request.
+        lda_level = None
+        dash_steer = steer_alert
+        dash_cancel_chime = pcm_cancel_cmd
+        if vehicle_audio:
+          lda_level = (3 if audible == AudibleAlert.warningImmediate else
+                       2 if repeat else 1 if beep else 0)
+          if fcw_alert:
+            lda_level = 0
+          dash_steer = hud_control.visualAlert == VisualAlert.ldw
+          dash_cancel_chime = False
+        dash_alert = (beep, repeat, lda_level, dash_cancel_chime, dash_steer,
+                      hud_control.leftLaneDepart, hud_control.rightLaneDepart)
         send_ui |= dash_alert != self._last_prius_dash_alert
         self._last_prius_dash_alert = dash_alert
         if self.frame % 20 == 0 or send_ui:
-          can_sends.append(toyotacan.create_ui_command(self.packer, steer_alert, pcm_cancel_cmd, hud_control.leftLaneVisible,
+          can_sends.append(toyotacan.create_ui_command(self.packer, dash_steer, dash_cancel_chime, hud_control.leftLaneVisible,
                                                        hud_control.rightLaneVisible, hud_control.leftLaneDepart,
                                                        hud_control.rightLaneDepart, CC.enabled, CS.lkas_hud,
-                                                       prius_stock_lda=True, supplementary_beep=beep, supplementary_repeat=repeat))
+                                                       prius_stock_lda=True, supplementary_beep=beep, supplementary_repeat=repeat,
+                                                       supplementary_lda_level=lda_level))
       elif self.frame % 20 == 0 or send_ui:
         can_sends.append(toyotacan.create_ui_command(self.packer, steer_alert, pcm_cancel_cmd, hud_control.leftLaneVisible,
                                                      hud_control.rightLaneVisible, hud_control.leftLaneDepart,

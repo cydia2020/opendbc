@@ -418,6 +418,8 @@ struct CarControl {
 
     # not used with the dash, TODO: separate structs for dash UI and device UI
     audibleAlert @5: AudibleAlert;
+    # Private Prius alert routing policy (not an acknowledgement of playback).
+    enableVehicleBuzzer @11: Bool;
 
     enum VisualAlert {
       # these are the choices from the Honda

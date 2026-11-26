@@ -113,7 +113,7 @@ def create_fcw_command(packer, fcw):
 
 
 def create_ui_command(packer, steer, chime, left_line, right_line, left_lane_depart, right_lane_depart, enabled, stock_lkas_hud,
-                      *, prius_stock_lda=False, supplementary_beep=False, supplementary_repeat=False):
+                      *, prius_stock_lda=False, supplementary_beep=False, supplementary_repeat=False, supplementary_lda_level=None):
   values = {
     "TWO_BEEPS": chime,
     "LDA_ALERT": steer,
@@ -173,6 +173,10 @@ def create_ui_command(packer, steer, chime, left_line, right_line, left_lane_dep
     values["TWO_BEEPS"] = bool(values["TWO_BEEPS"] or stock_lkas_hud.get("TWO_BEEPS", 0) or supplementary_beep)
     values["REPEATED_BEEPS"] = bool(values["REPEATED_BEEPS"] or stock_lkas_hud.get("REPEATED_BEEPS", 0)
                                     or supplementary_repeat)
+    if supplementary_lda_level is not None:
+      # Do not overwrite a more urgent factory warning or stock LDW.
+      values["LDA_ALERT"] = max(int(values["LDA_ALERT"]), int(stock_lkas_hud.get("LDA_ALERT", 0)),
+                                supplementary_lda_level)
 
   return packer.make_can_msg("LKAS_HUD", 0, values)
 
