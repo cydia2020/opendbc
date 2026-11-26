@@ -88,7 +88,7 @@ class ToyotaFlags(IntFlag):
   NO_STOP_TIMER_DEPRECATED = 256
 
 
-PRIUS_LEGACY_MASS_KG: 1375
+PRIUS_LEGACY_MASS_KG = 1375
 
 
 def dbc_dict(pt, radar):
