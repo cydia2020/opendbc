@@ -95,7 +95,7 @@ class CarState(CarStateBase):
 
     wheel_speeds = [cp.vl["WHEEL_SPEEDS"][f"WHEEL_SPEED_{whl}"] for whl in ("FL", "FR", "RL", "RR")]
     self.parse_wheel_speeds(ret, *wheel_speeds)
-    ret.vEgoCluster = ret.vEgo * 1.015  # minimum of all the cars
+    ret.vEgoCluster = ret.vEgo * (1.05 if self.CP.carFingerprint == CAR.TOYOTA_PRIUS else 1.015)  # minimum of all the cars, 1.05 on Prius
 
     # moving if any wheel turns, either way, like the safety
     ret.standstill = all(abs(speed) < 1e-3 for speed in wheel_speeds)
