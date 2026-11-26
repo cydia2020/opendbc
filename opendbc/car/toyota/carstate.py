@@ -270,9 +270,9 @@ class CarState(CarStateBase):
       ret.brakeLights = False
       ret.brakeLightsValid = True
 
-    dimmed = _fresh_signal(cp, "BODY_CONTROL_STATE", "METER_DIMMED", 2.0)
-    slider = _fresh_signal(cp, "BODY_CONTROL_STATE_2", "METER_SLIDER_BRIGHTNESS_PCT", 2.0)
-    low = _fresh_signal(cp, "BODY_CONTROL_STATE_2", "METER_SLIDER_LOW_BRIGHTNESS", 2.0)
+    dimmed = display_sample("BODY_CONTROL_STATE", "METER_DIMMED", 2.0, 10.0)
+    slider = display_sample("BODY_CONTROL_STATE_2", "METER_SLIDER_BRIGHTNESS_PCT", 2.0, 10.0)
+    low = display_sample("BODY_CONTROL_STATE_2", "METER_SLIDER_LOW_BRIGHTNESS", 2.0, 10.0)
     if dimmed == 1 and slider is not None and 0 <= slider <= 100:
       ret.meterBrightness = slider * 0.5
       ret.meterBrightnessValid = True
