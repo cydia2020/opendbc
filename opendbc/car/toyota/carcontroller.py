@@ -231,7 +231,15 @@ class CarController(CarControllerBase):
       # brakes can take a while to ramp up causing a lurch forward. prevent resume press until planner wants to move.
       # don't use CC.cruiseControl.resume since it is gated on CS.cruiseState.standstill which goes false for 3s after resume press
       # whitelist hybrids as they do not have this issue and can stay stopped after resume press
-      if not self.CP.flags & ToyotaFlags.HYBRID.value:
+      if self.CP.flags & ToyotaFlags.DSU_REROUTED:
+        # Hold by default. Only the explicit planner-authorised resume request
+        # releases the PCM hold / external resume relay on this harness.
+        self.standstill_req = not (CC.cruiseControl.resume and CC.enabled and CC.longActive and
+                                   not pcm_cancel_cmd and CS.out.cruiseState.enabled and
+                                   CS.out.canValid and not CS.out.canTimeout and
+                                   not CS.out.brakePressed and not CS.out.gasPressed and
+                                   not CS.out.stockAeb and not CS.out.stockFcw and not fcw_alert)
+      elif not self.CP.flags & ToyotaFlags.HYBRID.value:
         should_resume = actuators.accel > 0
         if should_resume:
           self.standstill_req = False
