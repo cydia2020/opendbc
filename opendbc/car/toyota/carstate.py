@@ -250,10 +250,24 @@ class CarState(CarStateBase):
 
   @staticmethod
   def _update_private_telemetry(cp, ret):
-    acc_brake = _fresh_signal(cp, "ESP_CONTROL", "BRAKE_LIGHTS_ACC", 0.25)
-    pedal_brake = _fresh_signal(cp, "BRAKE_MODULE", "BRAKE_PRESSED", 0.25)
-    if acc_brake is not None and pedal_brake is not None:
-      ret.brakeLights = bool(acc_brake or pedal_brake)
+    def display_sample(message, signal, min_age=0.25, max_age=1.0):
+      # Match the parser's measured message frequency, allowing for jitter.
+      # This tolerance is only for display telemetry, not driving inputs.
+      msg = cp.dbc.name_to_msg.get(message)
+      state = cp.message_states.get(msg.address) if msg is not None else None
+      frequency = state.frequency if state is not None else 0.0
+      age_limit = max(min_age, min(max_age, 2.5 / frequency)) if frequency > 0 else min_age
+      return _fresh_signal(cp, message, signal, age_limit)
+
+    acc_brake = display_sample("ESP_CONTROL", "BRAKE_LIGHTS_ACC")
+    pedal_brake = display_sample("BRAKE_MODULE", "BRAKE_PRESSED")
+    # A fresh positive on either input is sufficient. A confirmed release
+    # requires both inputs to be fresh and zero.
+    if acc_brake or pedal_brake:
+      ret.brakeLights = True
+      ret.brakeLightsValid = True
+    elif acc_brake is not None and pedal_brake is not None:
+      ret.brakeLights = False
       ret.brakeLightsValid = True
 
     dimmed = _fresh_signal(cp, "BODY_CONTROL_STATE", "METER_DIMMED", 2.0)
