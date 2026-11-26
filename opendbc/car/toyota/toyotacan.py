@@ -112,7 +112,8 @@ def create_fcw_command(packer, fcw):
   return packer.make_can_msg("PCS_HUD", 0, values)
 
 
-def create_ui_command(packer, steer, chime, left_line, right_line, left_lane_depart, right_lane_depart, enabled, stock_lkas_hud):
+def create_ui_command(packer, steer, chime, left_line, right_line, left_lane_depart, right_lane_depart, enabled, stock_lkas_hud,
+                      *, prius_stock_lda=False, supplementary_beep=False, supplementary_repeat=False):
   values = {
     "TWO_BEEPS": chime,
     "LDA_ALERT": steer,
@@ -153,6 +154,25 @@ def create_ui_command(packer, steer, chime, left_line, right_line, left_lane_dep
       "LANE_SWAY_SENSITIVITY",
       "LANE_SWAY_TOGGLE",
     ]})
+
+  if prius_stock_lda:
+    # Keep factory LDA settings and indications alongside openpilot warnings.
+    # Do not overwrite an openpilot warning or suppress a camera warning.
+    for signal in ("LDA_SA_TOGGLE", "LDA_SENSITIVITY", "LDW_EXIST", "LKAS_STATUS", "SET_ME_X01", "SET_ME_X02"):
+      if signal in stock_lkas_hud:
+        values[signal] = stock_lkas_hud[signal]
+    for signal in ("LDA_FRONT_CAMERA_BLOCKED", "LDA_MALFUNCTION", "LDA_UNAVAILABLE",
+                   "LDA_UNAVAILABLE_QUIET", "ADJUSTING_CAMERA", "TAKE_CONTROL", "LDA_ON_MESSAGE", "LDA_MESSAGES"):
+      if stock_lkas_hud.get(signal, 0):
+        values[signal] = stock_lkas_hud[signal]
+    if not values["LDA_ALERT"]:
+      values["LDA_ALERT"] = stock_lkas_hud.get("LDA_ALERT", 0)
+    for signal in ("LEFT_LINE", "RIGHT_LINE"):
+      if stock_lkas_hud.get(signal) == 3:
+        values[signal] = 3
+    values["TWO_BEEPS"] = bool(values["TWO_BEEPS"] or stock_lkas_hud.get("TWO_BEEPS", 0) or supplementary_beep)
+    values["REPEATED_BEEPS"] = bool(values["REPEATED_BEEPS"] or stock_lkas_hud.get("REPEATED_BEEPS", 0)
+                                    or supplementary_repeat)
 
   return packer.make_can_msg("LKAS_HUD", 0, values)
 

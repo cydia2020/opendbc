@@ -15,6 +15,10 @@ Ecu = structs.CarParams.Ecu
 LongCtrlState = structs.CarControl.Actuators.LongControlState
 SteerControlType = structs.CarParams.SteerControlType
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
+AudibleAlert = structs.CarControl.HUDControl.AudibleAlert
+
+# Private Prius dash option; soundd remains the primary alert source.
+PRIUS_SUPPLEMENTARY_BUZZER = True
 
 # The up limit allows the brakes/gas to unwind quickly leaving a stop,
 # the down limit roughly matches the rate of ACCEL_NET, reducing PCM compensation windup
@@ -57,6 +61,7 @@ class CarController(CarControllerBase):
     self.last_torque = 0
     self.last_angle = 0
     self.alert_active = False
+    self._last_prius_dash_alert = None
     self.standstill_req = False
     self.permit_braking = True
     self.steer_rate_counter = 0
@@ -342,7 +347,20 @@ class CarController(CarControllerBase):
         # forcing the pcm to disengage causes a bad fault sound so play a good sound instead
         send_ui = True
 
-      if self.frame % 20 == 0 or send_ui:
+      if self.CP.carFingerprint == CAR.TOYOTA_PRIUS:
+        audible = hud_control.audibleAlert
+        beep = PRIUS_SUPPLEMENTARY_BUZZER and audible in (AudibleAlert.prompt, AudibleAlert.promptDistracted)
+        repeat = PRIUS_SUPPLEMENTARY_BUZZER and audible in (AudibleAlert.promptRepeat, AudibleAlert.warningSoft,
+                                                            AudibleAlert.warningImmediate)
+        dash_alert = (beep, repeat, hud_control.leftLaneDepart, hud_control.rightLaneDepart)
+        send_ui |= dash_alert != self._last_prius_dash_alert
+        self._last_prius_dash_alert = dash_alert
+        if self.frame % 20 == 0 or send_ui:
+          can_sends.append(toyotacan.create_ui_command(self.packer, steer_alert, pcm_cancel_cmd, hud_control.leftLaneVisible,
+                                                       hud_control.rightLaneVisible, hud_control.leftLaneDepart,
+                                                       hud_control.rightLaneDepart, CC.enabled, CS.lkas_hud,
+                                                       prius_stock_lda=True, supplementary_beep=beep, supplementary_repeat=repeat))
+      elif self.frame % 20 == 0 or send_ui:
         can_sends.append(toyotacan.create_ui_command(self.packer, steer_alert, pcm_cancel_cmd, hud_control.leftLaneVisible,
                                                      hud_control.rightLaneVisible, hud_control.leftLaneDepart,
                                                      hud_control.rightLaneDepart, CC.enabled, CS.lkas_hud))
